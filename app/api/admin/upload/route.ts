@@ -28,12 +28,23 @@ export async function POST(req: Request) {
       fileName = `${timestamp}-${cleanName}`;
     }
 
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
+    try {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      const filePath = path.join(targetDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+    } catch (writeErr: unknown) {
+      // In Vercel serverless environment, process.cwd() may be read-only
+      const err = writeErr as { code?: string; message?: string };
+      if (err.code === "EROFS" || err.code === "EACCES") {
+        const tmpDir = path.join("/tmp", "uploads");
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, fileName), buffer);
+      } else {
+        throw writeErr;
+      }
     }
-
-    const filePath = path.join(targetDir, fileName);
-    fs.writeFileSync(filePath, buffer);
 
     const publicUrl = targetName === "dr-arun-shah-urologist-janakpur.jpg"
       ? `/dr-arun-shah-urologist-janakpur.jpg?v=${Date.now()}`
@@ -42,6 +53,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, url: publicUrl, fileName });
   } catch (error) {
     console.error("Error uploading file:", error);
-    return NextResponse.json({ success: false, error: "Failed to upload image" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Upload failed: Filesystem read-only on Serverless." }, { status: 500 });
   }
 }

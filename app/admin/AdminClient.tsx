@@ -72,7 +72,7 @@ export function AdminClient() {
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
-  const [heroPhotoTimestamp, setHeroPhotoTimestamp] = useState(Date.now());
+  const [heroPhotoTimestamp, setHeroPhotoTimestamp] = useState(1);
   const [heroUploadMessage, setHeroUploadMessage] = useState("");
 
   const loadItems = async (section = activeSection) => {
@@ -93,8 +93,11 @@ export function AdminClient() {
 
   useEffect(() => {
     if (isAuthenticated && activeSection !== "hero") {
-      loadItems(activeSection);
-      setActiveTab("list");
+      const t = setTimeout(() => {
+        loadItems(activeSection);
+        setActiveTab("list");
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [isAuthenticated, activeSection]);
 

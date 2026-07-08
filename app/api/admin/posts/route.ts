@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
     const filePath = path.join(blogDirectory, `${cleanSlug}.md`);
 
-    const frontmatterObj: Record<string, any> = {
+    const frontmatterObj: Record<string, unknown> = {
       title,
       date: date || new Date().toISOString().split("T")[0],
       author: author || "Dr. Arun Shah",

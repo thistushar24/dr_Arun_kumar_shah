@@ -7,9 +7,12 @@ import { motion } from "motion/react";
 export interface GalleryItem {
   title: string;
   image: string;
+  src?: string;
+  alt?: string;
+  label?: string;
 }
 
-const defaultGalleryImages = [
+const defaultGalleryImages: GalleryItem[] = [
   {
     image: "https://placehold.co/600x400/f8fafc/475569?text=Modern+Waiting+Area",
     title: "Modern Waiting Area",
@@ -44,7 +47,7 @@ export function ClinicMarquee({ initialItems = [] }: { initialItems?: GalleryIte
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.items && data.items.length > 0) {
-          setItems(data.items.map((i: any) => ({
+          setItems(data.items.map((i: { title?: string; image?: string }) => ({
             title: i.title || "Clinic Facility",
             image: i.image || "https://placehold.co/600x400/f8fafc/475569?text=Facility+Photo",
           })));
@@ -78,13 +81,13 @@ export function ClinicMarquee({ initialItems = [] }: { initialItems?: GalleryIte
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={item.image || (item as any).src}
-                alt={item.title || (item as any).alt}
+                src={item.image || item.src}
+                alt={item.title || item.alt}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-105"
               />
               <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-sm border border-white/50 flex items-center gap-2">
                 <Camera className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-bold text-slate-800">{item.title || (item as any).label}</span>
+                <span className="text-xs font-bold text-slate-800">{item.title || item.label}</span>
               </div>
             </div>
           </div>

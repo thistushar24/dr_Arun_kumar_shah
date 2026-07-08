@@ -227,7 +227,7 @@ export default function AboutPage() {
           <Stethoscope className="w-12 h-12 mx-auto mb-6 opacity-80" />
           <h2 className="text-3xl md:text-4xl font-heading font-bold mb-6">Patient-Centered Medical Philosophy</h2>
           <p className="text-lg md:text-xl leading-relaxed opacity-90 italic">
-            "My goal is to provide world-class urological care that is accessible, empathetic, and strictly ethical. I believe in empowering patients through education, ensuring they understand their conditions and treatment options fully before making decisions. Anxiety should be relieved the moment a patient walks into my clinic."
+            &quot;My goal is to provide world-class urological care that is accessible, empathetic, and strictly ethical. I believe in empowering patients through education, ensuring they understand their conditions and treatment options fully before making decisions. Anxiety should be relieved the moment a patient walks into my clinic.&quot;
           </p>
         </div>
       </section>

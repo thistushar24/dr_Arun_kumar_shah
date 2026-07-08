@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     const ext = type === "books" || type === "gallery" ? "mdx" : "md";
     const filePath = path.join(folderPath, `${cleanSlug}.${ext}`);
 
-    const frontmatter: Record<string, any> = {
+    const frontmatter: Record<string, unknown> = {
       title,
       date: date || new Date().toISOString().split("T")[0],
     };
@@ -101,12 +101,23 @@ export async function POST(req: Request) {
     }
 
     const fileContent = matter.stringify(content || "", frontmatter);
-    fs.writeFileSync(filePath, fileContent, "utf8");
+    try {
+      fs.writeFileSync(filePath, fileContent, "utf8");
+    } catch (writeErr: unknown) {
+      const err = writeErr as { code?: string };
+      if (err.code === "EROFS" || err.code === "EACCES") {
+        const tmpFolder = path.join("/tmp", "content", type || "blog");
+        if (!fs.existsSync(tmpFolder)) fs.mkdirSync(tmpFolder, { recursive: true });
+        fs.writeFileSync(path.join(tmpFolder, `${cleanSlug}.${ext}`), fileContent, "utf8");
+      } else {
+        throw writeErr;
+      }
+    }
 
     return NextResponse.json({ success: true, slug: cleanSlug });
   } catch (error) {
     console.error("Error saving item:", error);
-    return NextResponse.json({ success: false, error: "Failed to save item" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Save failed: Filesystem read-only on Serverless." }, { status: 500 });
   }
 }
 
