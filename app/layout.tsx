@@ -28,8 +28,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
+      <body
+        className="min-h-full flex flex-col overflow-x-hidden bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary"
+        suppressHydrationWarning
+      >
         <LayoutWrapper>
           {children}
         </LayoutWrapper>
