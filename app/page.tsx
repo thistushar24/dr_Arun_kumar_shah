@@ -107,6 +107,11 @@ export default async function Home() {
       } catch {
         // fallback to local
       }
+
+      if (heroPhoto === "/dr-arun-shah-urologist-janakpur.jpg" || heroPhoto.startsWith("/dr-arun-shah-urologist-janakpur.jpg")) {
+        const ts = heroPhoto.includes("?v=") ? heroPhoto.split("?v=")[1] : "";
+        heroPhoto = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/public/dr-arun-shah-urologist-janakpur.jpg${ts ? "?v=" + ts : ""}`;
+      }
     }
 
     if (heroPhoto === "/dr-arun-shah-urologist-janakpur.jpg") {
@@ -220,12 +225,10 @@ export default async function Home() {
             </div>
 
             {/* Right Column: Doctor Image */}
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={heroPhoto}
               alt="Dr. Arun Shah - Best Urologist in Janakpur"
-              width={500}
-              height={625}
-              priority
               className="w-full max-w-md mx-auto aspect-[4/5] object-cover rounded-2xl shadow-xl relative z-10"
             />
           </div>

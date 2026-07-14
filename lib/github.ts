@@ -22,38 +22,58 @@ export async function saveToGitHub(
   const repo = (await getCloudEnv("GITHUB_REPO")) || "website";
   const branch = (await getCloudEnv("GITHUB_BRANCH")) || "main";
 
-  // Clean relative path leading slash
   const cleanPath = relativePath.replace(/^\/+/, "");
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${cleanPath}`;
+  const targetPath = cleanPath;
+  let url = `https://api.github.com/repos/${owner}/${repo}/contents/${targetPath}`;
 
   try {
-    // 1. Check if file exists on GitHub to obtain its current SHA (required for overwrites)
-    const getSha = async () => {
-      const getRes = await fetch(`${url}?ref=${branch}&_ts=${Date.now()}`, {
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "National-Urology-Center-Admin",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-        },
-      });
-      if (getRes.ok) {
-        const getJson = await getRes.json().catch(() => ({}));
-        return getJson.sha as string | undefined;
+    const getShaAndResolvePath = async (): Promise<{ sha?: string; resolvedUrl?: string }> => {
+      const pathsToCheck = [cleanPath];
+      if (cleanPath.endsWith(".md")) {
+        pathsToCheck.push(cleanPath.replace(/\.md$/, ".mdx"));
+      } else if (cleanPath.endsWith(".mdx")) {
+        pathsToCheck.push(cleanPath.replace(/\.mdx$/, ".md"));
       }
-      return undefined;
+      if (cleanPath.startsWith("content/blog/")) {
+        pathsToCheck.push(cleanPath.replace("content/blog/", "content/blogs/"));
+        if (cleanPath.endsWith(".md")) {
+          pathsToCheck.push(cleanPath.replace("content/blog/", "content/blogs/").replace(/\.md$/, ".mdx"));
+        } else if (cleanPath.endsWith(".mdx")) {
+          pathsToCheck.push(cleanPath.replace("content/blog/", "content/blogs/").replace(/\.mdx$/, ".md"));
+        }
+      }
+
+      for (const p of pathsToCheck) {
+        const checkUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${p}`;
+        const getRes = await fetch(`${checkUrl}?ref=${branch}`, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "National-Urology-Center-Admin",
+          },
+        });
+        if (getRes.ok) {
+          const getJson = (await getRes.json().catch(() => ({}))) as { sha?: string };
+          if (getJson.sha) {
+            return { sha: getJson.sha, resolvedUrl: checkUrl };
+          }
+        }
+      }
+      return { sha: undefined, resolvedUrl: url };
     };
 
-    const sha = await getSha();
+    const resolved = await getShaAndResolvePath();
+    const sha = resolved.sha;
+    if (resolved.resolvedUrl) {
+      url = resolved.resolvedUrl;
+    }
 
-    // 2. Convert content to base64
     const base64Content =
       typeof content === "string"
         ? Buffer.from(content, "utf8").toString("base64")
         : content.toString("base64");
 
-    // 3. PUT file to GitHub
     let putRes = await fetch(url, {
       method: "PUT",
       headers: {
@@ -70,10 +90,11 @@ export async function saveToGitHub(
       }),
     });
 
-    // 4. If SHA mismatch occurs (409 Conflict or 422), refresh SHA directly with no-store and retry once
     if (putRes.status === 409 || putRes.status === 422) {
-      const latestSha = await getSha();
-      putRes = await fetch(url, {
+      const latestResolved = await getShaAndResolvePath();
+      const latestSha = latestResolved.sha;
+      const latestUrl = latestResolved.resolvedUrl || url;
+      putRes = await fetch(latestUrl, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -69,19 +69,18 @@ export async function POST(req: Request) {
 
       // If GITHUB_TOKEN is available, upload directly to GitHub REST API
       if (token) {
-        const getSha = async () => {
+        const getSha = async (targetUrl: string) => {
           try {
-            const checkRes = await fetch(`${githubApiUrl}?ref=${branch}&_ts=${Date.now()}`, {
+            const checkRes = await fetch(`${targetUrl}?ref=${branch}`, {
               cache: "no-store",
               headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: "application/vnd.github.v3+json",
                 "User-Agent": "National-Urology-Center-Admin",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
               },
             });
             if (checkRes.ok) {
-              const checkData = await checkRes.json().catch(() => ({}));
+              const checkData = (await checkRes.json().catch(() => ({}))) as { sha?: string };
               return checkData.sha as string | undefined;
             }
           } catch (_e) {
@@ -90,7 +89,7 @@ export async function POST(req: Request) {
           return undefined;
         };
 
-        const sha = await getSha();
+        const sha = await getSha(githubApiUrl);
 
         let putRes = await fetch(githubApiUrl, {
           method: "PUT",
@@ -109,7 +108,7 @@ export async function POST(req: Request) {
         });
 
         if (putRes.status === 409 || putRes.status === 422) {
-          const latestSha = await getSha();
+          const latestSha = await getSha(githubApiUrl);
           putRes = await fetch(githubApiUrl, {
             method: "PUT",
             headers: {
@@ -144,7 +143,55 @@ export async function POST(req: Request) {
           }
         }
 
-        const putData = await putRes.json().catch(() => ({}));
+        const putData = (await putRes.json().catch(() => ({}))) as { content?: { download_url?: string; html_url?: string } };
+        const rawUrl = putData.content?.download_url
+          ? `${putData.content.download_url}?v=${Date.now()}`
+          : `${publicUrl}?v=${Date.now()}`;
+
+        if (isHero) {
+          try {
+            const settingsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/content/settings.json`;
+            const settingsSha = await getSha(settingsUrl);
+            let currentSettings: Record<string, unknown> = {};
+            try {
+              const sRes = await fetch(`${settingsUrl}?ref=${branch}`, {
+                cache: "no-store",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: "application/vnd.github.v3+json",
+                  "User-Agent": "National-Urology-Center-Admin",
+                },
+              });
+              if (sRes.ok) {
+                const sJson = (await sRes.json().catch(() => ({}))) as { content?: string };
+                if (sJson.content) {
+                  currentSettings = JSON.parse(Buffer.from(sJson.content, "base64").toString("utf8"));
+                }
+              }
+            } catch {}
+
+            currentSettings.heroDoctorPhoto = rawUrl;
+            const settingsBuffer = Buffer.from(JSON.stringify(currentSettings, null, 2), "utf8").toString("base64");
+            await fetch(settingsUrl, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github.v3+json",
+                "Content-Type": "application/json",
+                "User-Agent": "National-Urology-Center-Admin",
+              },
+              body: JSON.stringify({
+                message: "Update hero doctor photo url in settings.json",
+                content: settingsBuffer,
+                branch,
+                ...(settingsSha ? { sha: settingsSha } : {}),
+              }),
+            });
+          } catch (_err) {
+            console.warn("Could not update settings.json for hero photo:", _err);
+          }
+        }
+
         revalidatePath("/", "layout");
         revalidatePath("/admin", "layout");
         revalidatePath("/blog", "layout");
@@ -154,9 +201,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
           success: true,
           url: publicUrl,
-          rawUrl: putData.content?.download_url
-            ? `${putData.content.download_url}?_ts=${Date.now()}`
-            : publicUrl,
+          rawUrl,
           fileName: filename,
           github: putData.content?.html_url,
         });

@@ -39,22 +39,29 @@ export async function getMdxBySlug<T>(folder: string, slug: string): Promise<Mdx
 
   if (token) {
     try {
-      for (const ext of ["md", "mdx"]) {
-        const ghRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/content/${folder}/${slug}.${ext}?_ts=${Date.now()}`, {
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-          },
-        });
-        if (ghRes.ok) {
-          const fileContents = await ghRes.text();
-          const { data, content } = matter(fileContents);
-          return {
-            slug,
-            frontmatter: data as T,
-            content,
-          };
+      const foldersToCheck = folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
+      for (const f of foldersToCheck) {
+        for (const ext of ["md", "mdx"]) {
+          const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${f}/${slug}.${ext}?ref=${branch}`, {
+            cache: "no-store",
+            next: { revalidate: 0 },
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/vnd.github.v3.raw",
+              "User-Agent": "National-Urology-Center",
+            },
+          });
+          if (ghRes.ok) {
+            const fileContents = await ghRes.text();
+            if (fileContents && fileContents.trim().length > 0) {
+              const { data, content } = matter(fileContents);
+              return {
+                slug,
+                frontmatter: data as T,
+                content,
+              };
+            }
+          }
         }
       }
     } catch {
@@ -93,45 +100,52 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
 
   if (token) {
     try {
-      const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${folder}?ref=${branch}&_ts=${Date.now()}`, {
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "National-Urology-Center",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-        },
-      });
-      if (ghRes.ok) {
-        const ghFiles = (await ghRes.json().catch(() => ([]))) as Array<{ name?: string; download_url?: string }>;
-        if (Array.isArray(ghFiles)) {
-          const mdFiles = ghFiles.filter((f) => f && f.name && (f.name.endsWith(".md") || f.name.endsWith(".mdx")) && f.download_url);
-          const items = await Promise.all(
-            mdFiles.map(async (fileObj) => {
-              const raw = await fetch(`${fileObj.download_url}?_ts=${Date.now()}`, {
-                cache: "no-store",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Cache-Control": "no-cache, no-store, must-revalidate",
-                },
-              }).then((r) => r.text()).catch(() => "");
-              if (!raw) return null;
-              const { data, content } = matter(raw);
-              const slug = (fileObj.name || "").replace(/\.mdx?$/, "");
-              return {
-                slug,
-                frontmatter: data as T,
-                content,
-              };
-            })
-          );
-          const validItems = items.filter((item): item is MdxFile<T> => item !== null);
-          validItems.sort((a, b) => {
-            const dateA = (a.frontmatter as unknown as { date?: string }).date || "2026-07-08";
-            const dateB = (b.frontmatter as unknown as { date?: string }).date || "2026-07-08";
-            return new Date(dateB).getTime() - new Date(dateA).getTime();
-          });
-          return validItems;
+      const foldersToCheck = folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
+      for (const f of foldersToCheck) {
+        const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${f}?ref=${branch}`, {
+          cache: "no-store",
+          next: { revalidate: 0 },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "National-Urology-Center",
+          },
+        });
+        if (ghRes.ok) {
+          const ghFiles = (await ghRes.json().catch(() => ([]))) as Array<{ name?: string; download_url?: string; path?: string }>;
+          if (Array.isArray(ghFiles)) {
+            const mdFiles = ghFiles.filter((file) => file && file.name && (file.name.endsWith(".md") || file.name.endsWith(".mdx")) && file.path);
+            const items = await Promise.all(
+              mdFiles.map(async (fileObj) => {
+                const rawRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${fileObj.path}?ref=${branch}`, {
+                  cache: "no-store",
+                  next: { revalidate: 0 },
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github.v3.raw",
+                    "User-Agent": "National-Urology-Center",
+                  },
+                }).catch(() => null);
+                if (!rawRes || !rawRes.ok) return null;
+                const raw = await rawRes.text().catch(() => "");
+                if (!raw) return null;
+                const { data, content } = matter(raw);
+                const slug = (fileObj.name || "").replace(/\.mdx?$/, "");
+                return {
+                  slug,
+                  frontmatter: data as T,
+                  content,
+                };
+              })
+            );
+            const validItems = items.filter((item): item is MdxFile<T> => item !== null);
+            validItems.sort((a, b) => {
+              const dateA = (a.frontmatter as unknown as { date?: string }).date || "2026-07-08";
+              const dateB = (b.frontmatter as unknown as { date?: string }).date || "2026-07-08";
+              return new Date(dateB).getTime() - new Date(dateA).getTime();
+            });
+            return validItems;
+          }
         }
       }
     } catch {
