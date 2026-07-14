@@ -29,18 +29,24 @@ export async function saveToGitHub(
   try {
     // 1. Check if file exists on GitHub to obtain its current SHA (required for overwrites)
     let sha: string | undefined;
-    const getRes = await fetch(`${url}?ref=${branch}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "National-Urology-Center-Admin",
-      },
-    });
+    const getSha = async () => {
+      const getRes = await fetch(`${url}?ref=${branch}&_ts=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "National-Urology-Center-Admin",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
+      if (getRes.ok) {
+        const getJson = await getRes.json().catch(() => ({}));
+        return getJson.sha as string | undefined;
+      }
+      return undefined;
+    };
 
-    if (getRes.ok) {
-      const getJson = await getRes.json().catch(() => ({}));
-      sha = getJson.sha;
-    }
+    sha = await getSha();
 
     // 2. Convert content to base64
     const base64Content =
@@ -49,7 +55,7 @@ export async function saveToGitHub(
         : content.toString("base64");
 
     // 3. PUT file to GitHub
-    const putRes = await fetch(url, {
+    let putRes = await fetch(url, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -64,6 +70,26 @@ export async function saveToGitHub(
         ...(sha ? { sha } : {}),
       }),
     });
+
+    // 4. If SHA mismatch occurs (409 Conflict or 422), refresh SHA directly with no-store and retry once
+    if (putRes.status === 409 || putRes.status === 422) {
+      const latestSha = await getSha();
+      putRes = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+          "User-Agent": "National-Urology-Center-Admin",
+        },
+        body: JSON.stringify({
+          message: commitMessage,
+          content: base64Content,
+          branch,
+          ...(latestSha ? { sha: latestSha } : {}),
+        }),
+      });
+    }
 
     if (!putRes.ok) {
       const errText = await putRes.text().catch(() => "Unknown error");
@@ -114,22 +140,29 @@ export async function deleteFromGitHub(
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${cleanPath}`;
 
   try {
-    const getRes = await fetch(`${url}?ref=${branch}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "National-Urology-Center-Admin",
-      },
-    });
+    const getSha = async () => {
+      const getRes = await fetch(`${url}?ref=${branch}&_ts=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "National-Urology-Center-Admin",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
+      if (getRes.ok) {
+        const getJson = await getRes.json().catch(() => ({}));
+        return getJson.sha as string | undefined;
+      }
+      return undefined;
+    };
 
-    if (!getRes.ok) {
+    const sha = await getSha();
+    if (!sha) {
       return { success: false, error: "File not found on GitHub repository" };
     }
 
-    const getJson = await getRes.json().catch(() => ({}));
-    const sha = getJson.sha;
-
-    const delRes = await fetch(url, {
+    let delRes = await fetch(url, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -143,6 +176,26 @@ export async function deleteFromGitHub(
         branch,
       }),
     });
+
+    if (delRes.status === 409 || delRes.status === 422) {
+      const latestSha = await getSha();
+      if (latestSha) {
+        delRes = await fetch(url, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+            "Content-Type": "application/json",
+            "User-Agent": "National-Urology-Center-Admin",
+          },
+          body: JSON.stringify({
+            message: commitMessage,
+            sha: latestSha,
+            branch,
+          }),
+        });
+      }
+    }
 
     if (!delRes.ok) {
       const errText = await delRes.text().catch(() => "Unknown error");

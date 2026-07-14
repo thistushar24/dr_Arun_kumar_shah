@@ -44,24 +44,31 @@ export async function POST(req: Request) {
       if (token) {
         // Step 1: Check if file already exists on GitHub to obtain current SHA (needed for updates)
         let sha: string | undefined;
-        try {
-          const checkRes = await fetch(`${githubApiUrl}?ref=${branch}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github.v3+json",
-              "User-Agent": "National-Urology-Center-Admin",
-            },
-          });
-          if (checkRes.ok) {
-            const checkData = await checkRes.json();
-            sha = checkData.sha;
+        const getSha = async () => {
+          try {
+            const checkRes = await fetch(`${githubApiUrl}?ref=${branch}&_ts=${Date.now()}`, {
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github.v3+json",
+                "User-Agent": "National-Urology-Center-Admin",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+              },
+            });
+            if (checkRes.ok) {
+              const checkData = await checkRes.json().catch(() => ({}));
+              return checkData.sha as string | undefined;
+            }
+          } catch (e) {
+            console.warn("Could not check existing file SHA:", e);
           }
-        } catch (e) {
-          console.warn("Could not check existing file SHA:", e);
-        }
+          return undefined;
+        };
+
+        sha = await getSha();
 
         // Step 2: Send PUT request to GitHub REST API
-        const putRes = await fetch(githubApiUrl, {
+        let putRes = await fetch(githubApiUrl, {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -77,10 +84,37 @@ export async function POST(req: Request) {
           }),
         });
 
+        // Step 3: If SHA conflict occurs (409 Conflict or 422), refresh SHA directly with no-store and retry once
+        if (putRes.status === 409 || putRes.status === 422) {
+          const latestSha = await getSha();
+          putRes = await fetch(githubApiUrl, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/vnd.github.v3+json",
+              "Content-Type": "application/json",
+              "User-Agent": "National-Urology-Center-Admin",
+            },
+            body: JSON.stringify({
+              message: commitMessage || `Upload image ${filename} via admin`,
+              content: cleanBase64,
+              branch,
+              ...(latestSha ? { sha: latestSha } : {}),
+            }),
+          });
+        }
+
         if (!putRes.ok) {
-          const errJson = await putRes.json();
+          const errText = await putRes.text().catch(() => "Unknown error");
+          let errMsg = errText;
+          try {
+            const errJson = JSON.parse(errText);
+            if (errJson.message) errMsg = errJson.message;
+          } catch {
+            // use plain text
+          }
           return NextResponse.json(
-            { success: false, error: errJson.message || "GitHub API PUT request failed" },
+            { success: false, error: errMsg || "GitHub API PUT request failed" },
             { status: putRes.status }
           );
         }
