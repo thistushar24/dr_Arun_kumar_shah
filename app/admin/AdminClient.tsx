@@ -169,7 +169,7 @@ export function AdminClient() {
           headers: {
             Authorization: `Bearer ${password}`,
         },
-      );
+      });
       const rawText = await res.text();
       let data: any = { success: false, error: rawText || "Server error" };
       try {
