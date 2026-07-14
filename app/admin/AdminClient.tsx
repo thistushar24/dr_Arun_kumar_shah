@@ -167,17 +167,33 @@ export function AdminClient() {
     setIsUploading(true);
     setHeroUploadMessage("");
 
-    const formData = new FormData();
-    formData.append("file", file);
-    if (isHero) {
-      formData.append("targetName", "dr-arun-shah-urologist-janakpur.jpg");
-    }
+    // Helper to convert File to Base64
+    const toBase64 = (f: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+      });
 
     try {
+      const base64DataUrl = await toBase64(file);
+      const filename = isHero
+        ? "dr-arun-shah-urologist-janakpur.jpg"
+        : `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "-").toLowerCase()}`;
+
       const res = await fetch("/api/admin/upload", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename,
+          base64Content: base64DataUrl,
+          commitMessage: `Upload image: ${filename} via Admin Portal`,
+        }),
       });
+
       const data = await res.json();
       if (data.success) {
         if (isHero) {
