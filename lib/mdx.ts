@@ -49,6 +49,7 @@ export async function getMdxBySlug<T>(folder: string, slug: string): Promise<Mdx
               Authorization: `Bearer ${token}`,
               Accept: "application/vnd.github.v3.raw",
               "User-Agent": "National-Urology-Center",
+              "Cache-Control": "no-cache, no-store, must-revalidate",
             },
           });
           if (ghRes.ok) {
@@ -109,6 +110,7 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github.v3+json",
             "User-Agent": "National-Urology-Center",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
           },
         });
         if (ghRes.ok) {
@@ -124,6 +126,7 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
                     Authorization: `Bearer ${token}`,
                     Accept: "application/vnd.github.v3.raw",
                     "User-Agent": "National-Urology-Center",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
                   },
                 }).catch(() => null);
                 if (!rawRes || !rawRes.ok) return null;

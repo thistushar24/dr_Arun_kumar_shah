@@ -87,8 +87,9 @@ export async function GET(req: Request) {
 
     if (token) {
       try {
-        const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${type}?ref=${branch}&_ts=${Date.now()}`, {
+        const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${type}?ref=${branch}`, {
           cache: "no-store",
+          next: { revalidate: 0 },
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github.v3+json",
@@ -97,18 +98,22 @@ export async function GET(req: Request) {
           },
         });
         if (ghRes.ok) {
-          const ghFiles = (await ghRes.json().catch(() => ([]))) as Array<{ name?: string; download_url?: string }>;
+          const ghFiles = (await ghRes.json().catch(() => ([]))) as Array<{ name?: string; download_url?: string; path?: string }>;
           if (Array.isArray(ghFiles)) {
-            const mdFiles = ghFiles.filter((f) => f && f.name && (f.name.endsWith(".md") || f.name.endsWith(".mdx")) && f.download_url);
+            const mdFiles = ghFiles.filter((f) => f && f.name && (f.name.endsWith(".md") || f.name.endsWith(".mdx")) && (f.path || f.download_url));
             const items = await Promise.all(
               mdFiles.map(async (fileObj) => {
-                const raw = await fetch(`${fileObj.download_url}?_ts=${Date.now()}`, {
+                const targetPath = fileObj.path || `content/${type}/${fileObj.name}`;
+                const raw = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${targetPath}?ref=${branch}`, {
                   cache: "no-store",
+                  next: { revalidate: 0 },
                   headers: {
                     Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github.v3.raw",
+                    "User-Agent": "National-Urology-Center-Admin",
                     "Cache-Control": "no-cache, no-store, must-revalidate",
                   },
-                }).then((r) => r.text()).catch(() => "");
+                }).then((r) => r.ok ? r.text() : "").catch(() => "");
                 const { data, content } = matter(raw);
                 return {
                   slug: (fileObj.name || "").replace(/\.mdx?$/, ""),
