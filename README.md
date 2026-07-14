@@ -56,9 +56,5 @@ The application is deployed on **Cloudflare Pages**.
 - CI quality gates (Lint, TypeScript, Unit Tests) run via GitHub Actions on Pull Requests.
 - Ensure that `ADMIN_PASSWORD` and `GITHUB_TOKEN` are set in the Cloudflare Pages environment variables.
 
-### Rollback Strategy
-If a deployment fails or introduces a regression:
-1. Log into the Cloudflare Dashboard.
-2. Navigate to Workers & Pages -> `website`.
-3. Go to the **Deployments** tab.
-4. Locate the previous stable deployment, click the three dots, and select **Rollback to this deployment**.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
