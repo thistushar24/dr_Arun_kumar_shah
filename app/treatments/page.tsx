@@ -4,6 +4,9 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = generateMetadata({
   title: "Advanced Urological Treatments | National Urology Center",
   description: "Explore our state-of-the-art urological treatments, including minimally invasive laser surgery for kidney stones, prostate enlargement, and reconstructive procedures.",

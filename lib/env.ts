@@ -6,16 +6,16 @@ export async function getCloudEnv(key: string): Promise<string | undefined> {
   }
   try {
     const cf = await getCloudflareContext({ async: true });
-    if (cf?.env && (cf.env as any)[key]) {
-      return (cf.env as any)[key];
+    if (cf?.env && (cf.env as Record<string, string>)[key]) {
+      return (cf.env as Record<string, string>)[key];
     }
   } catch {
     // ignore if not running in cloudflare async context
   }
   try {
     const cfSync = getCloudflareContext({ async: false });
-    if (cfSync?.env && (cfSync.env as any)[key]) {
-      return (cfSync.env as any)[key];
+    if (cfSync?.env && (cfSync.env as Record<string, string>)[key]) {
+      return (cfSync.env as Record<string, string>)[key];
     }
   } catch {
     // ignore

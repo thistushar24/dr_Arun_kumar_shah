@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { revalidatePath } from "next/cache";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const blogDirectory = path.join(process.cwd(), "content", "blog");
 
@@ -25,6 +29,7 @@ export async function GET() {
         draft: Boolean(data.draft),
         image: data.image || "",
         body: content,
+        content: content,
       };
     });
 
@@ -66,9 +71,13 @@ export async function POST(req: Request) {
       frontmatterObj.image = image;
     }
 
-    const fileContent = matter.stringify(content || "", frontmatterObj);
+    const fileContent = matter.stringify(content !== undefined ? content : (body.body || ""), frontmatterObj);
 
     fs.writeFileSync(filePath, fileContent, "utf8");
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/blog", "layout");
 
     return NextResponse.json({ success: true, slug: cleanSlug });
   } catch (error) {
@@ -96,6 +105,10 @@ export async function DELETE(req: Request) {
     } else {
       return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
     }
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/blog", "layout");
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -43,7 +43,7 @@ export function ClinicMarquee({ initialItems = [] }: { initialItems?: GalleryIte
   const [items, setItems] = useState<GalleryItem[]>(initialItems.length > 0 ? initialItems : defaultGalleryImages);
 
   useEffect(() => {
-    fetch("/api/admin/content?type=gallery")
+    fetch(`/api/admin/content?type=gallery&_ts=${Date.now()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.items && data.items.length > 0) {

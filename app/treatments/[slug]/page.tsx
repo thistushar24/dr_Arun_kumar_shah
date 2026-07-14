@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Phone, ArrowLeft, ShieldCheck } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface TreatmentFrontmatter {
   title: string;
   description: string;

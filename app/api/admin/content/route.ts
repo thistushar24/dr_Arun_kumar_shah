@@ -6,9 +6,17 @@ import { saveToGitHub, deleteFromGitHub } from "@/lib/github";
 import { checkAuth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getCloudEnv } from "@/lib/env";
+import { revalidatePath } from "next/cache";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const contentDir = path.join(process.cwd(), "content");
 const settingsFile = path.join(contentDir, "settings.json");
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+};
 
 export async function GET(req: Request) {
   const reqId = req.headers.get("x-request-id") || crypto.randomUUID();
@@ -16,7 +24,7 @@ export async function GET(req: Request) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const type = searchParams.get("type") || "blog"; // 'blog' | 'books' | 'gallery' | 'settings'
+    const type = searchParams.get("type") || "blog"; // 'blog' | 'books' | 'gallery' | 'treatments' | 'conditions' | 'faq' | 'settings'
 
     reqLogger.info(
       { event: "content_fetch_started", type },
@@ -36,16 +44,19 @@ export async function GET(req: Request) {
           settingsFile,
           JSON.stringify(defaultSettings, null, 2),
         );
-        return NextResponse.json({ success: true, settings: defaultSettings });
+        return NextResponse.json(
+          { success: true, settings: defaultSettings },
+          { headers: NO_CACHE_HEADERS }
+        );
       }
       const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
-      return NextResponse.json({ success: true, settings });
+      return NextResponse.json({ success: true, settings }, { headers: NO_CACHE_HEADERS });
     }
 
     const folderPath = path.join(contentDir, type);
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
-      return NextResponse.json({ success: true, items: [] });
+      return NextResponse.json({ success: true, items: [] }, { headers: NO_CACHE_HEADERS });
     }
 
     const files = fs
@@ -61,11 +72,23 @@ export async function GET(req: Request) {
         date: data.date || "2026-07-08",
         author: data.author || "Dr. Arun Shah",
         category:
-          data.category || (type === "books" ? "Publication" : "Facility"),
+          data.category ||
+          (type === "books"
+            ? "Publication"
+            : type === "gallery"
+            ? "Facility"
+            : type === "treatments"
+            ? "Treatment"
+            : type === "conditions"
+            ? "Condition"
+            : type === "faq"
+            ? "Patient Care"
+            : "General Urology"),
         draft: Boolean(data.draft),
         image: data.image || data.cover || "",
-        description: data.description || "",
+        description: data.description || data.summary || "",
         body: content,
+        content: content,
       };
     });
 
@@ -73,7 +96,7 @@ export async function GET(req: Request) {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
-    return NextResponse.json({ success: true, items });
+    return NextResponse.json({ success: true, items }, { headers: NO_CACHE_HEADERS });
   } catch (error: unknown) {
     logger.error(
       {
@@ -85,7 +108,7 @@ export async function GET(req: Request) {
     );
     return NextResponse.json(
       { success: false, error: "Failed to fetch content" },
-      { status: 500 },
+      { status: 500, headers: NO_CACHE_HEADERS },
     );
   }
 }
@@ -135,10 +158,10 @@ export async function POST(req: Request) {
           settingsContent,
           "Update settings.json via Admin Portal",
         );
-        if (!ghRes.success) {
+        if (!ghRes.success && !localSuccess) {
           return NextResponse.json(
             { success: false, error: "GitHub commit failed: " + ghRes.error },
-            { status: 500 },
+            { status: 500, headers: NO_CACHE_HEADERS },
           );
         }
       } else if (!localSuccess) {
@@ -148,28 +171,55 @@ export async function POST(req: Request) {
             error:
               "Filesystem is read-only. Please add GITHUB_TOKEN to your Environment Variables to save permanently.",
           },
-          { status: 500 },
+          { status: 500, headers: NO_CACHE_HEADERS },
         );
       }
 
-      return NextResponse.json({ success: true });
+      revalidatePath("/", "layout");
+      revalidatePath("/admin", "layout");
+      return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
     }
 
     if (!slug || !title) {
       return NextResponse.json(
         { success: false, error: "Slug and title are required" },
-        { status: 400 },
+        { status: 400, headers: NO_CACHE_HEADERS },
       );
     }
 
     const folderPath = path.join(contentDir, type || "blog");
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+
     const cleanSlug = slug
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")
       .replace(/^-+|-+$/g, "");
-    const ext = type === "books" || type === "gallery" ? "mdx" : "md";
+
+    // Determine extension: if file already exists with .mdx or .md, keep it or use standard ext
+    const existingMdxPath = path.join(folderPath, `${cleanSlug}.mdx`);
+    const existingMdPath = path.join(folderPath, `${cleanSlug}.md`);
+    let ext = "md";
+    if (fs.existsSync(existingMdxPath)) {
+      ext = "mdx";
+    } else if (fs.existsSync(existingMdPath)) {
+      ext = "md";
+    } else {
+      ext =
+        type === "books" ||
+        type === "gallery" ||
+        type === "treatments" ||
+        type === "conditions"
+          ? "mdx"
+          : "md";
+    }
+
     const filePath = path.join(folderPath, `${cleanSlug}.${ext}`);
+    const altExt = ext === "md" ? "mdx" : "md";
+    const altFilePath = path.join(folderPath, `${cleanSlug}.${altExt}`);
     const relativeGitHubPath = `content/${type || "blog"}/${cleanSlug}.${ext}`;
+    const altRelativeGitHubPath = `content/${type || "blog"}/${cleanSlug}.${altExt}`;
 
     const frontmatter: Record<string, unknown> = {
       title,
@@ -181,21 +231,32 @@ export async function POST(req: Request) {
       if (description) frontmatter.description = description;
     } else if (type === "gallery") {
       if (image) frontmatter.image = image;
+      if (description) frontmatter.description = description;
+    } else if (type === "treatments" || type === "conditions") {
+      if (description) {
+        frontmatter.description = description;
+        frontmatter.summary = description;
+      }
+      if (image) frontmatter.image = image;
+      if (category) frontmatter.category = category;
+    } else if (type === "faq") {
+      if (category) frontmatter.category = category;
     } else {
       frontmatter.author = author || "Dr. Arun Shah";
       frontmatter.category = category || "General Urology";
       frontmatter.draft = Boolean(draft);
       if (image) frontmatter.image = image;
+      if (description) frontmatter.description = description;
     }
 
-    const fileContent = matter.stringify(content || "", frontmatter);
+    const fileContent = matter.stringify(content !== undefined ? content : (body.body || ""), frontmatter);
 
     let localSuccess = false;
     try {
-      if (!fs.existsSync(folderPath)) {
-        fs.mkdirSync(folderPath, { recursive: true });
-      }
       fs.writeFileSync(filePath, fileContent, "utf8");
+      if (fs.existsSync(altFilePath)) {
+        fs.unlinkSync(altFilePath);
+      }
       localSuccess = true;
     } catch {
       localSuccess = false;
@@ -208,10 +269,12 @@ export async function POST(req: Request) {
         fileContent,
         `Update ${type || "blog"}: ${title} via Admin Portal`,
       );
-      if (!ghRes.success) {
+      // Clean up alternate extension on GitHub if it exists to avoid collisions
+      await deleteFromGitHub(altRelativeGitHubPath, `Cleanup old ext ${altExt}`).catch(() => {});
+      if (!ghRes.success && !localSuccess) {
         return NextResponse.json(
           { success: false, error: "GitHub commit failed: " + ghRes.error },
-          { status: 500 },
+          { status: 500, headers: NO_CACHE_HEADERS },
         );
       }
     } else if (!localSuccess) {
@@ -221,11 +284,18 @@ export async function POST(req: Request) {
           error:
             "Filesystem is read-only. Please add GITHUB_TOKEN to your Environment Variables to commit directly to GitHub.",
         },
-        { status: 500 },
+        { status: 500, headers: NO_CACHE_HEADERS },
       );
     }
 
-    return NextResponse.json({ success: true, slug: cleanSlug });
+    revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/blog", "layout");
+    revalidatePath("/books", "layout");
+    revalidatePath("/treatments", "layout");
+    revalidatePath("/conditions", "layout");
+
+    return NextResponse.json({ success: true, slug: cleanSlug }, { headers: NO_CACHE_HEADERS });
   } catch (error: unknown) {
     logger.error(
       {
@@ -236,7 +306,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json(
       { success: false, error: "Failed to save item" },
-      { status: 500 },
+      { status: 500, headers: NO_CACHE_HEADERS },
     );
   }
 }
@@ -260,7 +330,7 @@ export async function DELETE(req: Request) {
     if (!slug) {
       return NextResponse.json(
         { success: false, error: "Missing slug parameter" },
-        { status: 400 },
+        { status: 400, headers: NO_CACHE_HEADERS },
       );
     }
 
@@ -268,58 +338,60 @@ export async function DELETE(req: Request) {
     const filePathMd = path.join(folderPath, `${slug}.md`);
     const filePathMdx = path.join(folderPath, `${slug}.mdx`);
 
-    const ext = type === "books" || type === "gallery" ? "mdx" : "md";
-
     let localSuccess = false;
     try {
       if (fs.existsSync(filePathMd)) {
         fs.unlinkSync(filePathMd);
         localSuccess = true;
-      } else if (fs.existsSync(filePathMdx)) {
+      }
+      if (fs.existsSync(filePathMdx)) {
         fs.unlinkSync(filePathMdx);
         localSuccess = true;
       }
     } catch {
-      // Filesystem is read-only on Cloudflare Pages / Serverless
       localSuccess = false;
     }
 
     const token = await getCloudEnv("GITHUB_TOKEN");
     if (token) {
-      // First try deleting with expected extension, then fallback to alternate extension
-      const relPath = `content/${type}/${slug}.${ext}`;
-      const altPath = `content/${type}/${slug}.${ext === "md" ? "mdx" : "md"}`;
-      const ghRes = await deleteFromGitHub(
-        relPath,
+      const relPathMd = `content/${type}/${slug}.md`;
+      const relPathMdx = `content/${type}/${slug}.mdx`;
+      const ghResMd = await deleteFromGitHub(
+        relPathMd,
         `Delete ${type}: ${slug} via Admin Portal`,
       );
-      if (!ghRes.success) {
-        const ghAltRes = await deleteFromGitHub(
-          altPath,
-          `Delete ${type}: ${slug} via Admin Portal`,
+      const ghResMdx = await deleteFromGitHub(
+        relPathMdx,
+        `Delete ${type}: ${slug} via Admin Portal`,
+      );
+      if (!ghResMd.success && !ghResMdx.success && !localSuccess) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "GitHub delete failed: Item not found on GitHub or local filesystem",
+          },
+          { status: 500, headers: NO_CACHE_HEADERS },
         );
-        if (!ghAltRes.success) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "GitHub delete failed: " + (ghRes.error || "Item not found on GitHub"),
-            },
-            { status: 500 },
-          );
-        }
       }
     } else if (!localSuccess) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "Filesystem read-only. Please add GITHUB_TOKEN in Cloudflare Pages Environment Variables to delete items.",
+            "Filesystem read-only. Please add GITHUB_TOKEN in Environment Variables to delete items.",
         },
-        { status: 500 },
+        { status: 500, headers: NO_CACHE_HEADERS },
       );
     }
 
-    return NextResponse.json({ success: true });
+    revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/blog", "layout");
+    revalidatePath("/books", "layout");
+    revalidatePath("/treatments", "layout");
+    revalidatePath("/conditions", "layout");
+
+    return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
   } catch (error: unknown) {
     logger.error(
       {
@@ -330,7 +402,7 @@ export async function DELETE(req: Request) {
     );
     return NextResponse.json(
       { success: false, error: "Failed to delete item" },
-      { status: 500 },
+      { status: 500, headers: NO_CACHE_HEADERS },
     );
   }
 }

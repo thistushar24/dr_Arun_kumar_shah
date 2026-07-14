@@ -36,7 +36,7 @@ interface BlogFrontmatter {
 }
 
 export default function BlogPage() {
-  const posts = getAllMdx<BlogFrontmatter>("blogs");
+  const posts = getAllMdx<BlogFrontmatter>("blog");
 
   return (
     <>

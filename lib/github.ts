@@ -28,7 +28,6 @@ export async function saveToGitHub(
 
   try {
     // 1. Check if file exists on GitHub to obtain its current SHA (required for overwrites)
-    let sha: string | undefined;
     const getSha = async () => {
       const getRes = await fetch(`${url}?ref=${branch}&_ts=${Date.now()}`, {
         cache: "no-store",
@@ -46,7 +45,7 @@ export async function saveToGitHub(
       return undefined;
     };
 
-    sha = await getSha();
+    const sha = await getSha();
 
     // 2. Convert content to base64
     const base64Content =

@@ -11,14 +11,14 @@ export interface MdxFile<T> {
 }
 
 function resolveFolderPath(folder: string): string | null {
+  if (folder === 'blogs' || folder === 'blog') {
+    const blogPath = path.join(contentDirectory, 'blog');
+    const blogsPath = path.join(contentDirectory, 'blogs');
+    if (fs.existsSync(blogPath)) return blogPath;
+    if (fs.existsSync(blogsPath)) return blogsPath;
+  }
   const dirPath = path.join(contentDirectory, folder);
   if (fs.existsSync(dirPath)) return dirPath;
-  if (folder === 'blogs' && fs.existsSync(path.join(contentDirectory, 'blog'))) {
-    return path.join(contentDirectory, 'blog');
-  }
-  if (folder === 'blog' && fs.existsSync(path.join(contentDirectory, 'blogs'))) {
-    return path.join(contentDirectory, 'blogs');
-  }
   return null;
 }
 

@@ -8,7 +8,9 @@ const config = defineCloudflareConfig({
 	// incrementalCache: r2IncrementalCache
 });
 
-export default {
+const openNextConfig = {
 	...config,
 	buildCommand: "npm run build:next",
 };
+
+export default openNextConfig;

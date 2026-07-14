@@ -5,6 +5,10 @@ import { saveToGitHub } from "@/lib/github";
 import { checkAuth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getCloudEnv } from "@/lib/env";
+import { revalidatePath } from "next/cache";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function POST(req: Request) {
   const reqId = req.headers.get("x-request-id") || crypto.randomUUID();
@@ -32,18 +36,39 @@ export async function POST(req: Request) {
         ? base64Content.split(",")[1]
         : base64Content;
 
+      const buffer = Buffer.from(cleanBase64, "base64");
+      const isHero = filename === "dr-arun-shah-urologist-janakpur.jpg";
+      const targetDir = isHero
+        ? path.join(process.cwd(), "public")
+        : path.join(process.cwd(), "public", "images");
+      const targetPath = isHero
+        ? "public/dr-arun-shah-urologist-janakpur.jpg"
+        : `public/images/${filename}`;
+      const publicUrl = isHero
+        ? `/dr-arun-shah-urologist-janakpur.jpg?v=${Date.now()}`
+        : `/images/${filename}`;
+
+      // Always save locally first so the running server immediately serves the uploaded image
+      let localSuccess = false;
+      try {
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
+        fs.writeFileSync(path.join(targetDir, filename), buffer);
+        localSuccess = true;
+      } catch (_localErr) {
+        console.warn("Could not save file locally:", _localErr);
+      }
+
       const token = await getCloudEnv("GITHUB_TOKEN");
       const owner = (await getCloudEnv("GITHUB_OWNER")) || "drarunshah24-dot";
       const repo = (await getCloudEnv("GITHUB_REPO")) || "website";
       const branch = (await getCloudEnv("GITHUB_BRANCH")) || "main";
 
-      const targetPath = `public/images/${filename}`;
       const githubApiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${targetPath}`;
 
       // If GITHUB_TOKEN is available, upload directly to GitHub REST API
       if (token) {
-        // Step 1: Check if file already exists on GitHub to obtain current SHA (needed for updates)
-        let sha: string | undefined;
         const getSha = async () => {
           try {
             const checkRes = await fetch(`${githubApiUrl}?ref=${branch}&_ts=${Date.now()}`, {
@@ -59,15 +84,14 @@ export async function POST(req: Request) {
               const checkData = await checkRes.json().catch(() => ({}));
               return checkData.sha as string | undefined;
             }
-          } catch (e) {
-            console.warn("Could not check existing file SHA:", e);
+          } catch (_e) {
+            console.warn("Could not check existing file SHA:", _e);
           }
           return undefined;
         };
 
-        sha = await getSha();
+        const sha = await getSha();
 
-        // Step 2: Send PUT request to GitHub REST API
         let putRes = await fetch(githubApiUrl, {
           method: "PUT",
           headers: {
@@ -84,7 +108,6 @@ export async function POST(req: Request) {
           }),
         });
 
-        // Step 3: If SHA conflict occurs (409 Conflict or 422), refresh SHA directly with no-store and retry once
         if (putRes.status === 409 || putRes.status === 422) {
           const latestSha = await getSha();
           putRes = await fetch(githubApiUrl, {
@@ -113,40 +136,47 @@ export async function POST(req: Request) {
           } catch {
             // use plain text
           }
-          return NextResponse.json(
-            { success: false, error: errMsg || "GitHub API PUT request failed" },
-            { status: putRes.status }
-          );
+          if (!localSuccess) {
+            return NextResponse.json(
+              { success: false, error: errMsg || "GitHub API PUT request failed and local save failed." },
+              { status: putRes.status }
+            );
+          }
         }
 
-        const putData = await putRes.json();
+        const putData = await putRes.json().catch(() => ({}));
+        revalidatePath("/", "layout");
+        revalidatePath("/admin", "layout");
+        revalidatePath("/blog", "layout");
+        revalidatePath("/books", "layout");
+        revalidatePath("/treatments", "layout");
+        revalidatePath("/conditions", "layout");
         return NextResponse.json({
           success: true,
-          url: `/images/${filename}`,
+          url: publicUrl,
           fileName: filename,
           github: putData.content?.html_url,
         });
       }
 
-      // Fallback for local development if GITHUB_TOKEN is not set
-      try {
-        const buffer = Buffer.from(cleanBase64, "base64");
-        const targetDir = path.join(process.cwd(), "public", "images");
-        if (!fs.existsSync(targetDir)) {
-          fs.mkdirSync(targetDir, { recursive: true });
-        }
-        fs.writeFileSync(path.join(targetDir, filename), buffer);
-        return NextResponse.json({
-          success: true,
-          url: `/images/${filename}`,
-          fileName: filename,
-        });
-      } catch (err) {
+      if (!localSuccess) {
         return NextResponse.json(
           { success: false, error: "GITHUB_TOKEN not set and local save failed." },
           { status: 500 }
         );
       }
+
+      revalidatePath("/", "layout");
+      revalidatePath("/admin", "layout");
+      revalidatePath("/blog", "layout");
+      revalidatePath("/books", "layout");
+      revalidatePath("/treatments", "layout");
+      revalidatePath("/conditions", "layout");
+      return NextResponse.json({
+        success: true,
+        url: publicUrl,
+        fileName: filename,
+      });
     }
 
     // 2. Handle FormData (Multipart) Uploads
@@ -173,7 +203,7 @@ export async function POST(req: Request) {
     let targetDir = path.join(process.cwd(), "public", "images");
     let relativeGitHubPath = "public/images/";
 
-    if (targetName === "dr-arun-shah-urologist-janakpur.jpg") {
+    if (targetName === "dr-arun-shah-urologist-janakpur.jpg" || file.name === "dr-arun-shah-urologist-janakpur.jpg") {
       targetDir = path.join(process.cwd(), "public");
       fileName = "dr-arun-shah-urologist-janakpur.jpg";
       relativeGitHubPath = "public/dr-arun-shah-urologist-janakpur.jpg";
@@ -205,7 +235,7 @@ export async function POST(req: Request) {
         buffer,
         `Upload image: ${fileName} via Admin Portal`,
       );
-      if (!ghRes.success) {
+      if (!ghRes.success && !localSuccess) {
         return NextResponse.json(
           { success: false, error: "GitHub image commit failed: " + ghRes.error },
           { status: 500 },
@@ -222,10 +252,16 @@ export async function POST(req: Request) {
     }
 
     const publicUrl =
-      targetName === "dr-arun-shah-urologist-janakpur.jpg"
+      fileName === "dr-arun-shah-urologist-janakpur.jpg"
         ? `/dr-arun-shah-urologist-janakpur.jpg?v=${Date.now()}`
         : `/images/${fileName}`;
 
+    revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/blog", "layout");
+    revalidatePath("/books", "layout");
+    revalidatePath("/treatments", "layout");
+    revalidatePath("/conditions", "layout");
     return NextResponse.json({ success: true, url: publicUrl, fileName });
   } catch (error: unknown) {
     logger.error(

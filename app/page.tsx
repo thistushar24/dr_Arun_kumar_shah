@@ -31,11 +31,15 @@ import { HeroGlow } from "@/components/ui/HeroGlow";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { ClinicMarquee } from "@/components/ui/ClinicMarquee";
 
+import fs from "fs";
+import path from "path";
+
 const WHATSAPP_URL =
   "https://wa.me/9779744427743?text=I%20would%20like%20to%20book%20an%20appointment.";
 const PHONE_NUMBER = "+9779744427743";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata = generateMetadata({
   title: "National Urology Center - Dr. Arun Shah | Janakpur",
@@ -64,8 +68,25 @@ export default function Home() {
   const clinicSchema = buildMedicalClinicSchema();
   const physicianSchema = buildPhysicianSchema();
   const books = getAllMdx<BookFrontmatter>("books");
-  const gallery = getAllMdx<GalleryFrontmatter>("gallery");
+  const galleryRaw = getAllMdx<GalleryFrontmatter>("gallery");
+  const galleryItems = galleryRaw.map((g) => ({
+    title: g.frontmatter.title || "Facility Photo",
+    image: g.frontmatter.image || "",
+  }));
   const faqs = getAllMdx<FaqFrontmatter>("faq");
+
+  let heroPhoto = "/dr-arun-shah-urologist-janakpur.jpg";
+  try {
+    const settingsPath = path.join(process.cwd(), "content", "settings.json");
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      if (settings.heroDoctorPhoto) {
+        heroPhoto = settings.heroDoctorPhoto;
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
 
   return (
     <>
@@ -166,7 +187,7 @@ export default function Home() {
 
             {/* Right Column: Doctor Image */}
             <Image
-              src="/dr-arun-shah-urologist-janakpur.jpg"
+              src={heroPhoto}
               alt="Dr. Arun Shah - Best Urologist in Janakpur"
               width={500}
               height={625}
@@ -356,7 +377,7 @@ export default function Home() {
         </div>
 
         {/* The Infinite Scrolling Marquee */}
-        <ClinicMarquee />
+        <ClinicMarquee initialItems={galleryItems} />
       </section>
 
       {/* ─── FAQ SECTION ─── */}

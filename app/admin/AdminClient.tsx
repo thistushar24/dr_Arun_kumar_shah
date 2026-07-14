@@ -25,6 +25,9 @@ import {
   Image as ImageIcon,
   Upload,
   UserCheck,
+  Stethoscope,
+  HelpCircle,
+  Activity,
 } from "lucide-react";
 
 interface ContentItem {
@@ -48,7 +51,7 @@ export function AdminClient() {
 
   // Active Section Tab
   const [activeSection, setActiveSection] = useState<
-    "blog" | "books" | "gallery" | "hero"
+    "blog" | "books" | "gallery" | "treatments" | "conditions" | "faq" | "hero"
   >("blog");
 
   // Content List State
@@ -82,10 +85,12 @@ export function AdminClient() {
     if (section === "hero") return;
     setIsLoadingItems(true);
     try {
-      const res = await fetch(`/api/admin/content?type=${section}`);
+      const res = await fetch(`/api/admin/content?type=${section}&_ts=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (data.success) {
-        setItems(data.items);
+        setItems(data.items || []);
       }
     } catch (err) {
       console.error("Failed to load content:", err);
@@ -140,13 +145,28 @@ export function AdminClient() {
           ? "Urology Guide"
           : activeSection === "gallery"
             ? "Facility"
-            : "Treatments",
+            : activeSection === "treatments"
+            ? "Surgical Procedure"
+            : activeSection === "conditions"
+            ? "Patient Guide"
+            : activeSection === "faq"
+            ? "General FAQ"
+            : "General Urology",
       draft: false,
       image: "",
-      description: activeSection === "books" ? "Short book description..." : "",
+      description:
+        activeSection === "books"
+          ? "Short book description..."
+          : activeSection === "treatments"
+          ? "Brief overview of the treatment procedure..."
+          : activeSection === "conditions"
+          ? "Summary of symptoms or condition..."
+          : "",
       body:
         activeSection === "books" || activeSection === "gallery"
           ? ""
+          : activeSection === "faq"
+          ? "Write the clear, concise answer here..."
           : "Write your article markdown here...",
     });
     setActiveTab("editor");
@@ -171,7 +191,7 @@ export function AdminClient() {
         },
       });
       const rawText = await res.text();
-      let data: any = { success: false, error: rawText || "Server error" };
+      let data: { success: boolean; error?: string; url?: string; [key: string]: unknown } = { success: false, error: rawText || "Server error" };
       try {
         data = JSON.parse(rawText);
       } catch {
@@ -226,7 +246,7 @@ export function AdminClient() {
       });
 
       const rawText = await res.text();
-      let data: any = { success: false, error: rawText || "Server error" };
+      let data: { success: boolean; error?: string; url?: string; [key: string]: unknown } = { success: false, error: rawText || "Server error" };
       try {
         data = JSON.parse(rawText);
       } catch {
@@ -283,7 +303,7 @@ export function AdminClient() {
         }),
       });
       const rawText = await res.text();
-      let data: any = { success: false, error: rawText || "Server error" };
+      let data: { success: boolean; error?: string; url?: string; [key: string]: unknown } = { success: false, error: rawText || "Server error" };
       try {
         data = JSON.parse(rawText);
       } catch {
@@ -429,7 +449,7 @@ export function AdminClient() {
         <div className="container mx-auto px-4 md:px-6 flex items-center gap-2 overflow-x-auto py-3">
           <button
             onClick={() => setActiveSection("blog")}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
               activeSection === "blog"
                 ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -440,8 +460,44 @@ export function AdminClient() {
           </button>
 
           <button
+            onClick={() => setActiveSection("treatments")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
+              activeSection === "treatments"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Treatments</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSection("conditions")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
+              activeSection === "conditions"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Stethoscope className="w-4 h-4" />
+            <span>Conditions</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSection("faq")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
+              activeSection === "faq"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>FAQ</span>
+          </button>
+
+          <button
             onClick={() => setActiveSection("books")}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
               activeSection === "books"
                 ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -453,7 +509,7 @@ export function AdminClient() {
 
           <button
             onClick={() => setActiveSection("gallery")}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
               activeSection === "gallery"
                 ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -465,7 +521,7 @@ export function AdminClient() {
 
           <button
             onClick={() => setActiveSection("hero")}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition shrink-0 ${
               activeSection === "hero"
                 ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -562,6 +618,11 @@ export function AdminClient() {
                   {activeSection === "books" && "Books & Medical Publications"}
                   {activeSection === "gallery" &&
                     "State-of-the-Art Clinic Facilities"}
+                  {activeSection === "treatments" &&
+                    "Advanced Surgical Treatments & Procedures"}
+                  {activeSection === "conditions" &&
+                    "Urological Conditions & Patient Guides"}
+                  {activeSection === "faq" && "Frequently Asked Questions"}
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
                   {activeSection === "blog" &&
@@ -570,6 +631,12 @@ export function AdminClient() {
                     "Manage authored books and medical literature with cover photos."}
                   {activeSection === "gallery" &&
                     "Add and edit state-of-the-art clinic equipment and facility photos."}
+                  {activeSection === "treatments" &&
+                    "Manage urological procedures, laser surgeries, and treatment descriptions."}
+                  {activeSection === "conditions" &&
+                    "Manage urological condition guides and symptom overviews."}
+                  {activeSection === "faq" &&
+                    "Manage frequently asked questions and patient answers."}
                 </p>
               </div>
 
@@ -595,7 +662,13 @@ export function AdminClient() {
                       ? "Article"
                       : activeSection === "books"
                         ? "Book / Publication"
-                        : "Facility Photo"}
+                        : activeSection === "gallery"
+                          ? "Facility Photo"
+                          : activeSection === "treatments"
+                            ? "Treatment"
+                            : activeSection === "conditions"
+                              ? "Condition"
+                              : "FAQ"}
                   </span>
                 </button>
               </div>
@@ -648,10 +721,13 @@ export function AdminClient() {
                       <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
                         <th className="py-4 px-6">Photo</th>
                         <th className="py-4 px-6">Title</th>
-                        {activeSection === "books" && (
-                          <th className="py-4 px-6">Description</th>
+                        {(activeSection === "books" ||
+                          activeSection === "treatments" ||
+                          activeSection === "conditions" ||
+                          activeSection === "faq") && (
+                          <th className="py-4 px-6">Description / Summary</th>
                         )}
-                        <th className="py-4 px-6">Date</th>
+                        <th className="py-4 px-6">Date / Category</th>
                         <th className="py-4 px-6 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -682,13 +758,21 @@ export function AdminClient() {
                               /{activeSection}/{item.slug}
                             </div>
                           </td>
-                          {activeSection === "books" && (
+                          {(activeSection === "books" ||
+                            activeSection === "treatments" ||
+                            activeSection === "conditions" ||
+                            activeSection === "faq") && (
                             <td className="py-4 px-6 text-slate-600 max-w-xs truncate">
-                              {item.description}
+                              {item.description || item.body || "—"}
                             </td>
                           )}
                           <td className="py-4 px-6 text-slate-500">
-                            {item.date}
+                            <div>{item.date}</div>
+                            {item.category && (
+                              <div className="text-xs text-blue-600 font-medium mt-0.5">
+                                {item.category}
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-6 text-right">
                             <div className="inline-flex items-center gap-2 justify-end">
@@ -746,65 +830,99 @@ export function AdminClient() {
                   />
                 </div>
 
-                {/* PHOTO UPLOAD / URL FIELD FOR BOOKS, GALLERY, & BLOG */}
-                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
-                    Photo / Cover Image
-                  </label>
-
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    {currentItem.image ? (
-                      <img
-                        src={currentItem.image}
-                        alt="Preview"
-                        className="w-20 h-20 object-cover rounded-xl border border-slate-300"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
-
-                    <div className="flex-1 space-y-2 w-full">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={currentItem.image || ""}
-                          onChange={(e) =>
-                            setCurrentItem({
-                              ...currentItem,
-                              image: e.target.value,
-                            })
-                          }
-                          placeholder="/uploads/my-photo.jpg"
-                          className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono"
-                        />
-                        <label className="cursor-pointer px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 transition shrink-0">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>
-                            {isUploading ? "Uploading..." : "Upload Photo"}
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, false)}
-                            disabled={isUploading}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        Upload any JPG or PNG photo directly from your device or
-                        paste an image URL.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {activeSection === "books" && (
+                {/* CATEGORY FIELD FOR BLOG, TREATMENTS, CONDITIONS, & FAQ */}
+                {(activeSection === "blog" ||
+                  activeSection === "treatments" ||
+                  activeSection === "conditions" ||
+                  activeSection === "faq") && (
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                      Short Description
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      value={currentItem.category || ""}
+                      onChange={(e) =>
+                        setCurrentItem({
+                          ...currentItem,
+                          category: e.target.value,
+                        })
+                      }
+                      placeholder={
+                        activeSection === "faq"
+                          ? "e.g., Surgery, Appointments, Symptoms"
+                          : "e.g., Laser Urology, Kidney Health"
+                      }
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                    />
+                  </div>
+                )}
+
+                {/* PHOTO UPLOAD / URL FIELD */}
+                {activeSection !== "faq" && (
+                  <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                      Photo / Cover Image
+                    </label>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      {currentItem.image ? (
+                        <img
+                          src={currentItem.image}
+                          alt="Preview"
+                          className="w-20 h-20 object-cover rounded-xl border border-slate-300"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
+                      )}
+
+                      <div className="flex-1 space-y-2 w-full">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={currentItem.image || ""}
+                            onChange={(e) =>
+                              setCurrentItem({
+                                ...currentItem,
+                                image: e.target.value,
+                              })
+                            }
+                            placeholder="/uploads/my-photo.jpg"
+                            className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono"
+                          />
+                          <label className="cursor-pointer px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 transition shrink-0">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>
+                              {isUploading ? "Uploading..." : "Upload Photo"}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, false)}
+                              disabled={isUploading}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Upload any JPG or PNG photo directly from your device or
+                          paste an image URL.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(activeSection === "books" ||
+                  activeSection === "treatments" ||
+                  activeSection === "conditions") && (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                      {activeSection === "books"
+                        ? "Short Description"
+                        : "Summary / Brief Overview"}
                     </label>
                     <textarea
                       rows={3}
@@ -815,16 +933,22 @@ export function AdminClient() {
                           description: e.target.value,
                         })
                       }
-                      placeholder="Summary of publication or book..."
+                      placeholder={
+                        activeSection === "books"
+                          ? "Summary of publication or book..."
+                          : "Concise summary that appears on cards and search..."
+                      }
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                     />
                   </div>
                 )}
 
-                {activeSection === "blog" && (
+                {activeSection !== "books" && activeSection !== "gallery" && (
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                      Article Markdown Body
+                      {activeSection === "faq"
+                        ? "FAQ Answer (Markdown or Text)"
+                        : "Article / Guide Detailed Markdown Body"}
                     </label>
                     <textarea
                       rows={12}
@@ -832,6 +956,7 @@ export function AdminClient() {
                       onChange={(e) =>
                         setCurrentItem({ ...currentItem, body: e.target.value })
                       }
+                      placeholder="Write your content here..."
                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono"
                     />
                   </div>
