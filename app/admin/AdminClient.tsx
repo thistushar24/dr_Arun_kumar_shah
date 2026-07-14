@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @next/next/no-img-element, react-hooks/exhaustive-deps */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -46,7 +47,9 @@ export function AdminClient() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Section Tab
-  const [activeSection, setActiveSection] = useState<"blog" | "books" | "gallery" | "hero">("blog");
+  const [activeSection, setActiveSection] = useState<
+    "blog" | "books" | "gallery" | "hero"
+  >("blog");
 
   // Content List State
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -101,23 +104,28 @@ export function AdminClient() {
     }
   }, [isAuthenticated, activeSection]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
     setIsLoggingIn(true);
 
-    setTimeout(() => {
-      if (
-        email.toLowerCase() === "admin@drarunshah.com.np" &&
-        (password === "admin123" || password.length > 0)
-      ) {
+    try {
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${password}`,
+        },
+      });
+      if (res.ok) {
         setIsAuthenticated(true);
-        setIsLoggingIn(false);
       } else {
-        setLoginError("Invalid credentials. Default email: admin@drarunshah.com.np");
-        setIsLoggingIn(false);
+        setLoginError("Invalid password.");
       }
-    }, 500);
+    } catch (err) {
+      setLoginError("An error occurred during login.");
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const handleCreateNew = () => {
@@ -127,11 +135,19 @@ export function AdminClient() {
       title: "",
       date: today,
       author: "Dr. Arun Shah",
-      category: activeSection === "books" ? "Urology Guide" : activeSection === "gallery" ? "Facility" : "Treatments",
+      category:
+        activeSection === "books"
+          ? "Urology Guide"
+          : activeSection === "gallery"
+            ? "Facility"
+            : "Treatments",
       draft: false,
       image: "",
       description: activeSection === "books" ? "Short book description..." : "",
-      body: activeSection === "books" || activeSection === "gallery" ? "" : "Write your article markdown here...",
+      body:
+        activeSection === "books" || activeSection === "gallery"
+          ? ""
+          : "Write your article markdown here...",
     });
     setActiveTab("editor");
     setSaveMessage("");
@@ -146,9 +162,15 @@ export function AdminClient() {
   const handleDelete = async (slug: string) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
     try {
-      const res = await fetch(`/api/admin/content?type=${activeSection}&slug=${encodeURIComponent(slug)}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/admin/content?type=${activeSection}&slug=${encodeURIComponent(slug)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${password}`,
+          },
+        },
+      );
       const data = await res.json();
       if (data.success) {
         setItems(items.filter((i) => i.slug !== slug));
@@ -160,7 +182,10 @@ export function AdminClient() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isHero = false) => {
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    isHero = false,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -198,7 +223,9 @@ export function AdminClient() {
       if (data.success) {
         if (isHero) {
           setHeroPhotoTimestamp(Date.now());
-          setHeroUploadMessage("1st Page Doctor Photo updated successfully! It is now live across the homepage.");
+          setHeroUploadMessage(
+            "1st Page Doctor Photo updated successfully! It is now live across the homepage.",
+          );
         } else {
           setCurrentItem((prev) => ({ ...prev, image: data.url }));
         }
@@ -233,7 +260,10 @@ export function AdminClient() {
     try {
       const res = await fetch("/api/admin/content", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${password}`,
+        },
         body: JSON.stringify({
           type: activeSection,
           ...currentItem,
@@ -258,9 +288,10 @@ export function AdminClient() {
     }
   };
 
-  const filteredItems = items.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.slug.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredItems = items.filter(
+    (item) =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.slug.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   if (!isAuthenticated) {
@@ -271,8 +302,12 @@ export function AdminClient() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/10 text-blue-600 mb-4 shadow-inner">
               <ShieldCheck className="w-8 h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Physician Direct Login</h1>
-            <p className="text-sm text-slate-600 mt-1">National Urology Center • Content Manager</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              Physician Direct Login
+            </h1>
+            <p className="text-sm text-slate-600 mt-1">
+              National Urology Center • Content Manager
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -344,7 +379,9 @@ export function AdminClient() {
               <h1 className="font-bold text-slate-900 text-base leading-tight">
                 National Urology Center
               </h1>
-              <p className="text-xs text-slate-500">Full Website Content & Media Manager</p>
+              <p className="text-xs text-slate-500">
+                Full Website Content & Media Manager
+              </p>
             </div>
           </div>
 
@@ -437,7 +474,8 @@ export function AdminClient() {
                     1st Page Doctor Hero Photo Manager
                   </h2>
                   <p className="text-sm text-slate-600">
-                    Upload a new professional photograph for Dr. Arun Shah displayed prominently on the home page.
+                    Upload a new professional photograph for Dr. Arun Shah
+                    displayed prominently on the home page.
                   </p>
                 </div>
               </div>
@@ -458,7 +496,9 @@ export function AdminClient() {
 
                 <div className="space-y-4">
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    Select a high-resolution JPG or PNG image of Dr. Arun Shah. The photo will automatically update across the 1st page Hero section.
+                    Select a high-resolution JPG or PNG image of Dr. Arun Shah.
+                    The photo will automatically update across the 1st page Hero
+                    section.
                   </p>
 
                   <label className="block w-full cursor-pointer">
@@ -502,12 +542,16 @@ export function AdminClient() {
                 <h2 className="text-2xl font-bold text-slate-900">
                   {activeSection === "blog" && "Urology Articles & Blog Posts"}
                   {activeSection === "books" && "Books & Medical Publications"}
-                  {activeSection === "gallery" && "State-of-the-Art Clinic Facilities"}
+                  {activeSection === "gallery" &&
+                    "State-of-the-Art Clinic Facilities"}
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
-                  {activeSection === "blog" && "Manage patient education articles and urology posts."}
-                  {activeSection === "books" && "Manage authored books and medical literature with cover photos."}
-                  {activeSection === "gallery" && "Add and edit state-of-the-art clinic equipment and facility photos."}
+                  {activeSection === "blog" &&
+                    "Manage patient education articles and urology posts."}
+                  {activeSection === "books" &&
+                    "Manage authored books and medical literature with cover photos."}
+                  {activeSection === "gallery" &&
+                    "Add and edit state-of-the-art clinic equipment and facility photos."}
                 </p>
               </div>
 
@@ -516,7 +560,9 @@ export function AdminClient() {
                   onClick={() => loadItems()}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl transition shadow-sm"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isLoadingItems ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`w-4 h-4 ${isLoadingItems ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </button>
 
@@ -526,7 +572,12 @@ export function AdminClient() {
                 >
                   <Plus className="w-4 h-4" />
                   <span>
-                    Add {activeSection === "blog" ? "Article" : activeSection === "books" ? "Book / Publication" : "Facility Photo"}
+                    Add{" "}
+                    {activeSection === "blog"
+                      ? "Article"
+                      : activeSection === "books"
+                        ? "Book / Publication"
+                        : "Facility Photo"}
                   </span>
                 </button>
               </div>
@@ -550,13 +601,19 @@ export function AdminClient() {
             {isLoadingItems ? (
               <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
                 <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-                <p className="text-sm text-slate-600 font-medium">Loading items...</p>
+                <p className="text-sm text-slate-600 font-medium">
+                  Loading items...
+                </p>
               </div>
             ) : filteredItems.length === 0 ? (
               <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-slate-900">No items found</h3>
-                <p className="text-sm text-slate-500 mt-1 mb-6">Add your first item to this section.</p>
+                <h3 className="text-base font-bold text-slate-900">
+                  No items found
+                </h3>
+                <p className="text-sm text-slate-500 mt-1 mb-6">
+                  Add your first item to this section.
+                </p>
                 <button
                   onClick={handleCreateNew}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl"
@@ -573,14 +630,19 @@ export function AdminClient() {
                       <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
                         <th className="py-4 px-6">Photo</th>
                         <th className="py-4 px-6">Title</th>
-                        {activeSection === "books" && <th className="py-4 px-6">Description</th>}
+                        {activeSection === "books" && (
+                          <th className="py-4 px-6">Description</th>
+                        )}
                         <th className="py-4 px-6">Date</th>
                         <th className="py-4 px-6 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-sm">
                       {filteredItems.map((item) => (
-                        <tr key={item.slug} className="hover:bg-slate-50/70 transition">
+                        <tr
+                          key={item.slug}
+                          className="hover:bg-slate-50/70 transition"
+                        >
                           <td className="py-4 px-6">
                             {item.image ? (
                               <img
@@ -595,7 +657,9 @@ export function AdminClient() {
                             )}
                           </td>
                           <td className="py-4 px-6">
-                            <div className="font-semibold text-slate-900">{item.title}</div>
+                            <div className="font-semibold text-slate-900">
+                              {item.title}
+                            </div>
                             <div className="text-xs text-slate-400 font-mono mt-0.5">
                               /{activeSection}/{item.slug}
                             </div>
@@ -605,7 +669,9 @@ export function AdminClient() {
                               {item.description}
                             </td>
                           )}
-                          <td className="py-4 px-6 text-slate-500">{item.date}</td>
+                          <td className="py-4 px-6 text-slate-500">
+                            {item.date}
+                          </td>
                           <td className="py-4 px-6 text-right">
                             <div className="inline-flex items-center gap-2 justify-end">
                               <button
@@ -655,7 +721,9 @@ export function AdminClient() {
                     type="text"
                     required
                     value={currentItem.title}
-                    onChange={(e) => setCurrentItem({ ...currentItem, title: e.target.value })}
+                    onChange={(e) =>
+                      setCurrentItem({ ...currentItem, title: e.target.value })
+                    }
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                   />
                 </div>
@@ -684,13 +752,20 @@ export function AdminClient() {
                         <input
                           type="text"
                           value={currentItem.image || ""}
-                          onChange={(e) => setCurrentItem({ ...currentItem, image: e.target.value })}
+                          onChange={(e) =>
+                            setCurrentItem({
+                              ...currentItem,
+                              image: e.target.value,
+                            })
+                          }
                           placeholder="/uploads/my-photo.jpg"
                           className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono"
                         />
                         <label className="cursor-pointer px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 transition shrink-0">
                           <Upload className="w-3.5 h-3.5" />
-                          <span>{isUploading ? "Uploading..." : "Upload Photo"}</span>
+                          <span>
+                            {isUploading ? "Uploading..." : "Upload Photo"}
+                          </span>
                           <input
                             type="file"
                             accept="image/*"
@@ -701,7 +776,8 @@ export function AdminClient() {
                         </label>
                       </div>
                       <p className="text-xs text-slate-500">
-                        Upload any JPG or PNG photo directly from your device or paste an image URL.
+                        Upload any JPG or PNG photo directly from your device or
+                        paste an image URL.
                       </p>
                     </div>
                   </div>
@@ -715,7 +791,12 @@ export function AdminClient() {
                     <textarea
                       rows={3}
                       value={currentItem.description || ""}
-                      onChange={(e) => setCurrentItem({ ...currentItem, description: e.target.value })}
+                      onChange={(e) =>
+                        setCurrentItem({
+                          ...currentItem,
+                          description: e.target.value,
+                        })
+                      }
                       placeholder="Summary of publication or book..."
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                     />
@@ -730,7 +811,9 @@ export function AdminClient() {
                     <textarea
                       rows={12}
                       value={currentItem.body}
-                      onChange={(e) => setCurrentItem({ ...currentItem, body: e.target.value })}
+                      onChange={(e) =>
+                        setCurrentItem({ ...currentItem, body: e.target.value })
+                      }
                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono"
                     />
                   </div>
