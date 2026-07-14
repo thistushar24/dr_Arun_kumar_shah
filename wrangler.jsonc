@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "website",
+  "name": "drarunshah-site",
   "compatibility_date": "2026-07-14",
   "compatibility_flags": [
     "nodejs_compat"
@@ -13,7 +13,7 @@
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "website"
+      "service": "drarunshah-site"
     }
   ],
   "images": {
