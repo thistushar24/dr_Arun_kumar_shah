@@ -33,11 +33,12 @@ export async function saveToGitHub(
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github.v3+json",
+        "User-Agent": "National-Urology-Center-Admin",
       },
     });
 
     if (getRes.ok) {
-      const getJson = await getRes.json();
+      const getJson = await getRes.json().catch(() => ({}));
       sha = getJson.sha;
     }
 
@@ -54,6 +55,7 @@ export async function saveToGitHub(
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github.v3+json",
         "Content-Type": "application/json",
+        "User-Agent": "National-Urology-Center-Admin",
       },
       body: JSON.stringify({
         message: commitMessage,
@@ -64,11 +66,18 @@ export async function saveToGitHub(
     });
 
     if (!putRes.ok) {
-      const errJson = await putRes.json();
-      console.error("GitHub API error:", errJson);
+      const errText = await putRes.text().catch(() => "Unknown error");
+      let errMsg = errText;
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.message) errMsg = errJson.message;
+      } catch {
+        // use plain text if not JSON
+      }
+      console.error("GitHub API error:", errMsg);
       return {
         success: false,
-        error: errJson.message || "GitHub API PUT failed",
+        error: errMsg || "GitHub API PUT failed",
       };
     }
 
@@ -109,6 +118,7 @@ export async function deleteFromGitHub(
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github.v3+json",
+        "User-Agent": "National-Urology-Center-Admin",
       },
     });
 
@@ -116,7 +126,7 @@ export async function deleteFromGitHub(
       return { success: false, error: "File not found on GitHub repository" };
     }
 
-    const getJson = await getRes.json();
+    const getJson = await getRes.json().catch(() => ({}));
     const sha = getJson.sha;
 
     const delRes = await fetch(url, {
@@ -125,6 +135,7 @@ export async function deleteFromGitHub(
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github.v3+json",
         "Content-Type": "application/json",
+        "User-Agent": "National-Urology-Center-Admin",
       },
       body: JSON.stringify({
         message: commitMessage,
@@ -134,10 +145,17 @@ export async function deleteFromGitHub(
     });
 
     if (!delRes.ok) {
-      const errJson = await delRes.json();
+      const errText = await delRes.text().catch(() => "Unknown error");
+      let errMsg = errText;
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.message) errMsg = errJson.message;
+      } catch {
+        // use plain text if not JSON
+      }
       return {
         success: false,
-        error: errJson.message || "GitHub API DELETE failed",
+        error: errMsg || "GitHub API DELETE failed",
       };
     }
 

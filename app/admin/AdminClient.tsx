@@ -168,14 +168,19 @@ export function AdminClient() {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${password}`,
-          },
         },
       );
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = { success: false, error: rawText || "Server error" };
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // Server returned plain text or HTML instead of JSON
+      }
       if (data.success) {
         setItems(items.filter((i) => i.slug !== slug));
       } else {
-        alert("Delete failed: " + data.error);
+        alert("Delete failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Delete error:", err);
@@ -220,7 +225,13 @@ export function AdminClient() {
         }),
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = { success: false, error: rawText || "Server error" };
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // Server returned plain text or HTML instead of JSON
+      }
       if (data.success) {
         if (isHero) {
           setHeroPhotoTimestamp(Date.now());
@@ -231,7 +242,7 @@ export function AdminClient() {
           setCurrentItem((prev) => ({ ...prev, image: data.url }));
         }
       } else {
-        alert("Upload failed: " + data.error);
+        alert("Upload failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Upload error:", err);
@@ -271,7 +282,13 @@ export function AdminClient() {
           slug: autoSlug,
         }),
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = { success: false, error: rawText || "Server error" };
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // Server returned plain text or HTML instead of JSON
+      }
       if (data.success) {
         setSaveMessage("Saved directly to filesystem!");
         await loadItems(activeSection);
@@ -279,7 +296,7 @@ export function AdminClient() {
           setActiveTab("list");
         }, 1200);
       } else {
-        alert("Save failed: " + data.error);
+        alert("Save failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Save error:", err);
