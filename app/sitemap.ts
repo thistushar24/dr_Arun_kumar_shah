@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { getAllMdx } from "@/lib/mdx";
 
-export const revalidate = 3600;
+export const dynamic = "force-static";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://drarunshah.com.np";

@@ -10,7 +10,7 @@ import Image from "next/image";
 import Script from "next/script";
 import { Calendar, User, ArrowLeft, BookOpen, Share2 } from "lucide-react";
 
-export const revalidate = 3600;
+export const dynamic = "force-static";
 
 interface BlogFrontmatter {
   title: string;
