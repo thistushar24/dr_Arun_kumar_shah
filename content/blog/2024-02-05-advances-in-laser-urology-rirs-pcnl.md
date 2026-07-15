@@ -4,7 +4,7 @@ date: "2024-02-05"
 draft: false
 author: "Dr. Arun Shah"
 category: "Treatments"
-image: "/images/laser-surgery-blog.jpg"
+
 ---
 
 Historically, urological surgeries for kidney stones or prostate enlargement required large abdominal incisions, substantial blood loss, prolonged hospitalization, and painful postoperative recovery. Today, the field of urology has undergone a high-tech revolution.
