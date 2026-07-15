@@ -38,7 +38,7 @@ const WHATSAPP_URL =
   "https://wa.me/9779744427743?text=I%20would%20like%20to%20book%20an%20appointment.";
 const PHONE_NUMBER = "+9779744427743";
 
-export const revalidate = 3600;
+export const dynamic = "force-static";
 export const metadata = generateMetadata({
   title: "National Urology Center - Dr. Arun Shah | Janakpur",
   description:

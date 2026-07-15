@@ -13,8 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const dynamic = "force-static";
 
 interface BookFrontmatter {
   title: string;

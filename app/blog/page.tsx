@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 
-export const revalidate = 3600;
+export const dynamic = "force-static";
 export const metadata = generateMetadata({
   title: "Patient Education Blog | National Urology Center",
   description:
