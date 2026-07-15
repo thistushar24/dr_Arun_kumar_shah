@@ -6,7 +6,8 @@ export function buildPhysicianSchema() {
     "@type": "Physician",
     name: "Dr. Arun Shah",
     alternateName: "Dr. Arun Kumar Shah",
-    description: "Gold Medalist Urologist specializing in advanced laser surgery, kidney stones, and prostate treatments in Janakpur.",
+    description:
+      "Gold Medalist Urologist specializing in advanced laser surgery, kidney stones, and prostate treatments in Janakpur.",
     url: `${BASE_URL}/about`,
     image: `${BASE_URL}/dr-arun-shah-urologist-janakpur.jpg`,
     jobTitle: "Senior Consultant Urologist",
@@ -19,7 +20,7 @@ export function buildPhysicianSchema() {
       addressCountry: "NP",
     },
     telephone: ["+9779814834756", "+9779744427743"],
-    email: "info@drarunshah.com.np",
+    email: "drarunshah24@gmail.com",
     alumniOf: [
       {
         "@type": "CollegeOrUniversity",
@@ -37,7 +38,8 @@ export function buildMedicalClinicSchema() {
     url: BASE_URL,
     logo: `${BASE_URL}/images/logo.png`,
     image: `${BASE_URL}/images/clinic-exterior.jpg`,
-    description: "Premier urology clinic in Janakpur offering state-of-the-art care for kidney stones, prostate issues, and male reproductive health.",
+    description:
+      "Premier urology clinic in Janakpur offering state-of-the-art care for kidney stones, prostate issues, and male reproductive health.",
     telephone: ["+9779814834756", "+9779744427743"],
     address: {
       "@type": "PostalAddress",
@@ -49,7 +51,15 @@ export function buildMedicalClinicSchema() {
     openingHoursSpecification: [
       {
         "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        dayOfWeek: [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ],
         opens: "09:00",
         closes: "17:00",
       },

@@ -119,10 +119,10 @@ export default function ContactPage() {
                         Send us your medical reports or general inquiries.
                       </p>
                       <a
-                        href="mailto:info@drarunshah.com.np"
-                        className="text-primary font-medium hover:underline"
+                        href="mailto:drarunshah24@gmail.com"
+                        className="text-lg font-medium text-slate-700 hover:text-primary transition-colors"
                       >
-                        info@drarunshah.com.np
+                        drarunshah24@gmail.com
                       </a>
                     </div>
                   </div>
