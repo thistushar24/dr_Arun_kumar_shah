@@ -47,7 +47,7 @@ export default function RootLayout({
                   jobTitle: "Consultant Urologist",
                   medicalSpecialty: "Urology",
                   sameAs: [
-                    "https://www.linkedin.com/in/drarunshah",
+                    "https://www.linkedin.com/in/arun-shah-6b8a9b1b4/",
                     "https://twitter.com/drarunshah",
                   ],
                   worksFor: {
