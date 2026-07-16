@@ -41,13 +41,6 @@ export async function generateMetadata({ params }: Props) {
   });
 }
 
-export async function generateStaticParams() {
-  const posts = await getAllMdx<BlogFrontmatter>("blog");
-  return posts.map((post) => ({
-    slug: post.slug,
-  }));
-}
-
 export default async function BlogPostPage({ params }: Props) {
   const resolvedParams = await params;
   const post = await getMdxBySlug<BlogFrontmatter>("blog", resolvedParams.slug);
@@ -228,7 +221,7 @@ export default async function BlogPostPage({ params }: Props) {
                   </li>
                   <li className="border-t border-slate-200 pt-3">
                     <Link
-                      href="/treatments/rirs-laser-surgery"
+                      href="/treatments/rirs-surgery"
                       className="text-slate-700 hover:text-primary flex items-center justify-between transition-colors"
                     >
                       RIRS Laser Surgery{" "}

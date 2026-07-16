@@ -12,14 +12,31 @@ export interface MdxFile<T> {
 }
 
 function resolveFolderPath(folder: string): string | null {
+  const checkDirs = [
+    path.join(contentDirectory, folder),
+    path.join(process.cwd(), 'content', folder),
+    path.join(process.cwd(), '.open-next/server-functions/default/content', folder),
+    path.resolve('./content', folder),
+  ];
   if (folder === 'blogs' || folder === 'blog') {
-    const blogPath = path.join(contentDirectory, 'blog');
-    const blogsPath = path.join(contentDirectory, 'blogs');
-    if (fs.existsSync(blogPath)) return blogPath;
-    if (fs.existsSync(blogsPath)) return blogsPath;
+    checkDirs.push(
+      path.join(contentDirectory, 'blog'),
+      path.join(contentDirectory, 'blogs'),
+      path.join(process.cwd(), 'content', 'blog'),
+      path.join(process.cwd(), 'content', 'blogs'),
+      path.join(process.cwd(), '.open-next/server-functions/default/content', 'blog'),
+      path.join(process.cwd(), '.open-next/server-functions/default/content', 'blogs'),
+      path.resolve('./content/blog'),
+      path.resolve('./content/blogs')
+    );
   }
-  const dirPath = path.join(contentDirectory, folder);
-  if (fs.existsSync(dirPath)) return dirPath;
+  for (const dir of checkDirs) {
+    try {
+      if (fs.existsSync(dir)) return dir;
+    } catch {
+      // ignore
+    }
+  }
   return null;
 }
 
@@ -28,10 +45,18 @@ export function getMdxFiles(folder: string): string[] {
   if (!dirPath) {
     return [];
   }
-  return fs.readdirSync(dirPath).filter((file) => path.extname(file) === '.mdx' || path.extname(file) === '.md');
+  try {
+    return fs.readdirSync(dirPath).filter((file) => path.extname(file) === '.mdx' || path.extname(file) === '.md');
+  } catch {
+    return [];
+  }
 }
 
 export async function getMdxBySlug<T>(folder: string, slug: string): Promise<MdxFile<T> | null> {
+  if (!slug) return null;
+  const cleanSlug = decodeURIComponent(slug).trim().replace(/\.mdx?$/, '');
+  if (!cleanSlug) return null;
+
   const token = await getCloudEnv("GITHUB_TOKEN");
   const owner = (await getCloudEnv("GITHUB_OWNER")) || "drarunshah24-dot";
   const repo = (await getCloudEnv("GITHUB_REPO")) || "website";
@@ -42,7 +67,7 @@ export async function getMdxBySlug<T>(folder: string, slug: string): Promise<Mdx
       const foldersToCheck = folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
       for (const f of foldersToCheck) {
         for (const ext of ["md", "mdx"]) {
-          const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${f}/${slug}.${ext}?ref=${branch}`, {
+          const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/content/${f}/${encodeURIComponent(cleanSlug)}.${ext}?ref=${branch}`, {
             cache: "no-store",
             next: { revalidate: 0 },
             headers: {
@@ -57,7 +82,7 @@ export async function getMdxBySlug<T>(folder: string, slug: string): Promise<Mdx
             if (fileContents && fileContents.trim().length > 0) {
               const { data, content } = matter(fileContents);
               return {
-                slug,
+                slug: cleanSlug,
                 frontmatter: data as T,
                 content,
               };
@@ -66,15 +91,15 @@ export async function getMdxBySlug<T>(folder: string, slug: string): Promise<Mdx
         }
       }
     } catch {
-      console.warn(`Could not fetch ${folder}/${slug} from GitHub API, falling back to local fs`);
+      console.warn(`Could not fetch ${folder}/${cleanSlug} from GitHub API, falling back to local fs`);
     }
   }
 
   try {
     const dirPath = resolveFolderPath(folder) || path.join(contentDirectory, folder);
-    let fullPath = path.join(dirPath, `${slug}.mdx`);
+    let fullPath = path.join(dirPath, `${cleanSlug}.mdx`);
     if (!fs.existsSync(fullPath)) {
-      fullPath = path.join(dirPath, `${slug}.md`);
+      fullPath = path.join(dirPath, `${cleanSlug}.md`);
     }
     
     if (!fs.existsSync(fullPath)) return null;
@@ -83,12 +108,12 @@ export async function getMdxBySlug<T>(folder: string, slug: string): Promise<Mdx
     const { data, content } = matter(fileContents);
 
     return {
-      slug,
+      slug: cleanSlug,
       frontmatter: data as T,
       content,
     };
   } catch (error) {
-    console.error(`Error reading MDX file: ${folder}/${slug}`, error);
+    console.error(`Error reading MDX file: ${folder}/${cleanSlug}`, error);
     return null;
   }
 }
@@ -98,6 +123,8 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
   const owner = (await getCloudEnv("GITHUB_OWNER")) || "drarunshah24-dot";
   const repo = (await getCloudEnv("GITHUB_REPO")) || "website";
   const branch = (await getCloudEnv("GITHUB_BRANCH")) || "main";
+
+  const ghItemsMap = new Map<string, MdxFile<T>>();
 
   if (token) {
     try {
@@ -141,13 +168,9 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
                 };
               })
             );
-            const validItems = items.filter((item): item is MdxFile<T> => item !== null);
-            validItems.sort((a, b) => {
-              const dateA = (a.frontmatter as unknown as { date?: string }).date || "2026-07-08";
-              const dateB = (b.frontmatter as unknown as { date?: string }).date || "2026-07-08";
-              return new Date(dateB).getTime() - new Date(dateA).getTime();
-            });
-            return validItems;
+            for (const item of items) {
+              if (item) ghItemsMap.set(item.slug, item);
+            }
           }
         }
       }
@@ -157,13 +180,21 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
   }
 
   const files = getMdxFiles(folder);
-  const results = await Promise.all(
+  const localResults = await Promise.all(
     files.map((file) => {
       const slug = file.replace(/\.mdx?$/, '');
+      if (ghItemsMap.has(slug)) return Promise.resolve(null);
       return getMdxBySlug<T>(folder, slug);
     })
   );
-  const validResults = results.filter((file): file is MdxFile<T> => file !== null);
+  
+  for (const item of localResults) {
+    if (item && !ghItemsMap.has(item.slug)) {
+      ghItemsMap.set(item.slug, item);
+    }
+  }
+
+  const validResults = Array.from(ghItemsMap.values());
   validResults.sort((a, b) => {
     const dateA = (a.frontmatter as unknown as { date?: string }).date || "2026-07-08";
     const dateB = (b.frontmatter as unknown as { date?: string }).date || "2026-07-08";

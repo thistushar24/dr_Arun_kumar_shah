@@ -36,13 +36,6 @@ export async function generateMetadata({ params }: Props) {
   });
 }
 
-export async function generateStaticParams() {
-  const conditions = await getAllMdx<ConditionFrontmatter>("conditions");
-  return conditions.map((condition) => ({
-    slug: condition.slug,
-  }));
-}
-
 export default async function ConditionPage({ params }: Props) {
   const resolvedParams = await params;
   const condition = await getMdxBySlug<ConditionFrontmatter>("conditions", resolvedParams.slug);

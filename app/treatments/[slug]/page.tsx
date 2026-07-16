@@ -36,13 +36,6 @@ export async function generateMetadata({ params }: Props) {
   });
 }
 
-export async function generateStaticParams() {
-  const treatments = await getAllMdx<TreatmentFrontmatter>("treatments");
-  return treatments.map((treatment) => ({
-    slug: treatment.slug,
-  }));
-}
-
 export default async function TreatmentPage({ params }: Props) {
   const resolvedParams = await params;
   const treatment = await getMdxBySlug<TreatmentFrontmatter>("treatments", resolvedParams.slug);

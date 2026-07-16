@@ -37,13 +37,6 @@ export async function generateMetadata({ params }: Props) {
   });
 }
 
-export async function generateStaticParams() {
-  const books = await getAllMdx<BookFrontmatter>("books");
-  return books.map((book) => ({
-    slug: book.slug,
-  }));
-}
-
 export default async function BookPage({ params }: Props) {
   const resolvedParams = await params;
   const book = await getMdxBySlug<BookFrontmatter>("books", resolvedParams.slug);
