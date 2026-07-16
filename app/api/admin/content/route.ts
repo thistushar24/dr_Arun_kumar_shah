@@ -174,6 +174,8 @@ export async function GET(req: Request) {
                   draft: Boolean(data.draft),
                   image: data.image || data.cover || "",
                   description: data.description || data.summary || "",
+                  seoTitle: data.seoTitle || "",
+                  seoDescription: data.seoDescription || "",
                   body: content,
                   content: content,
                 };
@@ -236,6 +238,8 @@ export async function GET(req: Request) {
           draft: Boolean(data.draft),
           image: data.image || data.cover || "",
           description: data.description || data.summary || "",
+          seoTitle: data.seoTitle || "",
+          seoDescription: data.seoDescription || "",
           body: content,
           content: content,
         };
@@ -290,6 +294,8 @@ export async function POST(req: Request) {
       draft,
       image,
       description,
+      seoTitle,
+      seoDescription,
       content,
     } = body;
     reqLogger.info(
@@ -319,7 +325,7 @@ export async function POST(req: Request) {
         if (!ghRes.success && !localSuccess) {
           return NextResponse.json(
             { success: false, error: "GitHub commit failed: " + ghRes.error },
-            { status: 500, headers: NO_CACHE_HEADERS },
+            { status: 400, headers: NO_CACHE_HEADERS },
           );
         }
       } else if (!localSuccess) {
@@ -329,7 +335,7 @@ export async function POST(req: Request) {
             error:
               "Filesystem is read-only. Please add GITHUB_TOKEN to your Environment Variables to save permanently.",
           },
-          { status: 500, headers: NO_CACHE_HEADERS },
+          { status: 400, headers: NO_CACHE_HEADERS },
         );
       }
 
@@ -421,6 +427,9 @@ export async function POST(req: Request) {
       }
     }
 
+    if (seoTitle) frontmatter.seoTitle = seoTitle;
+    if (seoDescription) frontmatter.seoDescription = seoDescription;
+
     const fileContent = matter.stringify(
       content !== undefined ? content : body.body || "",
       frontmatter,
@@ -452,7 +461,7 @@ export async function POST(req: Request) {
       if (!ghRes.success && !localSuccess) {
         return NextResponse.json(
           { success: false, error: "GitHub commit failed: " + ghRes.error },
-          { status: 500, headers: NO_CACHE_HEADERS },
+          { status: 400, headers: NO_CACHE_HEADERS },
         );
       }
     } else if (!localSuccess) {
@@ -462,7 +471,7 @@ export async function POST(req: Request) {
           error:
             "Filesystem is read-only. Please add GITHUB_TOKEN to your Environment Variables to commit directly to GitHub.",
         },
-        { status: 500, headers: NO_CACHE_HEADERS },
+        { status: 400, headers: NO_CACHE_HEADERS },
       );
     }
 
@@ -552,7 +561,7 @@ export async function DELETE(req: Request) {
             error:
               "GitHub delete failed: Item not found on GitHub or local filesystem",
           },
-          { status: 500, headers: NO_CACHE_HEADERS },
+          { status: 400, headers: NO_CACHE_HEADERS },
         );
       }
     } else if (!localSuccess) {
@@ -562,7 +571,7 @@ export async function DELETE(req: Request) {
           error:
             "Filesystem read-only. Please add GITHUB_TOKEN in Environment Variables to delete items.",
         },
-        { status: 500, headers: NO_CACHE_HEADERS },
+        { status: 400, headers: NO_CACHE_HEADERS },
       );
     }
 

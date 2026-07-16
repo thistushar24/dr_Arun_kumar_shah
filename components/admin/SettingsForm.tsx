@@ -56,11 +56,35 @@ export function SettingsForm({
 
     setIsUploading(true);
 
-    const toBase64 = (f: File): Promise<string> =>
+    const toBase64 = (f: File, maxWidth = 1600): Promise<string> =>
       new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(f);
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = (event) => {
+          const img = document.createElement("img");
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) ctx.drawImage(img, 0, 0, width, height);
+
+            // Compress heavily to stay under Vercel 4.5MB payload limit
+            resolve(canvas.toDataURL("image/jpeg", 0.75));
+          };
+          img.onerror = reject;
+          if (event.target?.result) {
+            img.src = event.target.result as string;
+          }
+        };
         reader.onerror = reject;
       });
 
@@ -192,14 +216,13 @@ export function SettingsForm({
                 Current Live Homepage Portrait
               </p>
               <div className="relative mx-auto aspect-[4/5] w-full max-w-[240px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md">
-                <Image
+                <img
                   src={
                     heroPhotoPreviewUrl ||
                     `/dr-arun-shah-urologist-janakpur.jpg?t=${heroPhotoTimestamp}`
                   }
                   alt="Dr. Arun Shah"
-                  fill
-                  className="object-cover"
+                  style={{ objectFit: "cover", width: "100%", height: "100%" }}
                 />
               </div>
             </div>
