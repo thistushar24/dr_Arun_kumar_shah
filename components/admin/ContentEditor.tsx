@@ -32,11 +32,34 @@ export default function ContentEditor({
 
     setIsUploading(true);
 
-    const toBase64 = (f: File): Promise<string> =>
+    const toBase64 = (f: File, maxWidth = 1600): Promise<string> =>
       new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(f);
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = (event) => {
+          const img = document.createElement("img");
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL("image/jpeg", 0.75));
+          };
+          img.onerror = reject;
+          if (event.target?.result) {
+            img.src = event.target.result as string;
+          }
+        };
         reader.onerror = reject;
       });
 

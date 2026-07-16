@@ -319,7 +319,7 @@ export async function POST(req: Request) {
         if (!ghRes.success && !localSuccess) {
           return NextResponse.json(
             { success: false, error: "GitHub commit failed: " + ghRes.error },
-            { status: 500, headers: NO_CACHE_HEADERS },
+            { status: 400, headers: NO_CACHE_HEADERS },
           );
         }
       } else if (!localSuccess) {
@@ -329,7 +329,7 @@ export async function POST(req: Request) {
             error:
               "Filesystem is read-only. Please add GITHUB_TOKEN to your Environment Variables to save permanently.",
           },
-          { status: 500, headers: NO_CACHE_HEADERS },
+          { status: 400, headers: NO_CACHE_HEADERS },
         );
       }
 
@@ -452,7 +452,7 @@ export async function POST(req: Request) {
       if (!ghRes.success && !localSuccess) {
         return NextResponse.json(
           { success: false, error: "GitHub commit failed: " + ghRes.error },
-          { status: 500, headers: NO_CACHE_HEADERS },
+          { status: 400, headers: NO_CACHE_HEADERS },
         );
       }
     } else if (!localSuccess) {
@@ -462,7 +462,7 @@ export async function POST(req: Request) {
           error:
             "Filesystem is read-only. Please add GITHUB_TOKEN to your Environment Variables to commit directly to GitHub.",
         },
-        { status: 500, headers: NO_CACHE_HEADERS },
+        { status: 400, headers: NO_CACHE_HEADERS },
       );
     }
 
@@ -552,7 +552,7 @@ export async function DELETE(req: Request) {
             error:
               "GitHub delete failed: Item not found on GitHub or local filesystem",
           },
-          { status: 500, headers: NO_CACHE_HEADERS },
+          { status: 400, headers: NO_CACHE_HEADERS },
         );
       }
     } else if (!localSuccess) {
@@ -562,7 +562,7 @@ export async function DELETE(req: Request) {
           error:
             "Filesystem read-only. Please add GITHUB_TOKEN in Environment Variables to delete items.",
         },
-        { status: 500, headers: NO_CACHE_HEADERS },
+        { status: 400, headers: NO_CACHE_HEADERS },
       );
     }
 

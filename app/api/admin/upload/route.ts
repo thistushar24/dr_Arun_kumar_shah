@@ -266,7 +266,7 @@ export async function POST(req: Request) {
             success: false,
             error: "GITHUB_TOKEN not set and local save failed.",
           },
-          { status: 500 },
+          { status: 400 },
         );
       }
 
@@ -365,7 +365,7 @@ export async function POST(req: Request) {
             success: false,
             error: "GitHub image commit failed: " + ghRes.error,
           },
-          { status: 500 },
+          { status: 400 },
         );
       }
     } else if (!localSuccess) {
@@ -375,7 +375,7 @@ export async function POST(req: Request) {
           error:
             "Serverless filesystem is read-only. Add GITHUB_TOKEN to upload images permanently.",
         },
-        { status: 500 },
+        { status: 400 },
       );
     }
 
