@@ -1,7 +1,7 @@
 import { getMdxBySlug } from "@/lib/mdx";
 import { generateMetadata as generateSeoMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { SafeMdx } from "@/components/SafeMdx";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -129,7 +129,7 @@ export default async function BookPage({ params }: Props) {
                   providing essential insights for surgical practice.
                 </p>
               </div>
-              <MDXRemote source={book.content} />
+              <SafeMdx source={book.content} />
 
               <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <div className="text-sm text-slate-500">

@@ -3,7 +3,7 @@ import { getMdxBySlug, getAllMdx } from "@/lib/mdx";
 import { generateMetadata as generateSeoMetadata } from "@/lib/seo";
 import { buildArticleSchema } from "@/lib/schema";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { SafeMdx } from "@/components/SafeMdx";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -125,7 +125,7 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
 
             <article className="prose prose-slate prose-lg max-w-none prose-headings:font-heading prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-4 prose-h3:text-2xl prose-a:text-primary prose-li:marker:text-primary">
-              <MDXRemote source={post.content} />
+              <SafeMdx source={post.content} />
             </article>
 
             {/* Author Bio Box */}

@@ -1,7 +1,7 @@
 import { getMdxBySlug } from "@/lib/mdx";
 import { generateMetadata as generateSeoMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { SafeMdx } from "@/components/SafeMdx";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Phone, ArrowLeft } from "lucide-react";
@@ -82,7 +82,7 @@ export default async function ConditionPage({ params }: Props) {
           {/* Main Content (MDX) */}
           <div className="lg:col-span-8">
             <article className="prose prose-slate prose-lg max-w-none prose-headings:font-heading prose-headings:font-bold prose-h2:text-3xl prose-h3:text-2xl prose-a:text-primary">
-              <MDXRemote source={condition.content} />
+              <SafeMdx source={condition.content} />
             </article>
 
             {/* Medical Disclaimer */}

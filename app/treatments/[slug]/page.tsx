@@ -1,7 +1,7 @@
 import { getMdxBySlug } from "@/lib/mdx";
 import { generateMetadata as generateSeoMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { SafeMdx } from "@/components/SafeMdx";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calendar, Phone, ArrowLeft, ShieldCheck } from "lucide-react";
@@ -87,7 +87,7 @@ export default async function TreatmentPage({ params }: Props) {
         <div className="grid lg:grid-cols-12 gap-12">
           <div className="lg:col-span-8">
             <article className="prose prose-slate prose-lg max-w-none prose-headings:font-heading prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-a:text-emerald-700 prose-li:marker:text-emerald-500">
-              <MDXRemote source={treatment.content} />
+              <SafeMdx source={treatment.content} />
             </article>
 
             <div className="mt-16 p-8 bg-emerald-50 border border-emerald-200 rounded-2xl text-slate-900 shadow-sm">
