@@ -104,44 +104,71 @@ export async function getMdxBySlug<T>(
     // Ignore fs errors, fall back to GitHub API
   }
 
-  // Fallback to GitHub API (works at runtime in Edge Workers)
+  // Fallback to GitHub (works at runtime in Edge Workers without needing GITHUB_TOKEN)
+  const headers: Record<string, string> = {
+    "User-Agent": "National-Urology-Center",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  };
   if (token) {
-    try {
-      const foldersToCheck =
-        folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
-      for (const f of foldersToCheck) {
-        for (const ext of ["md", "mdx"]) {
-          const ghRes = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/contents/content/${f}/${encodeURIComponent(cleanSlug)}.${ext}?ref=${branch}`,
-            {
-              cache: "no-store",
-              next: { revalidate: 0 },
-              headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/vnd.github.v3.raw",
-                "User-Agent": "National-Urology-Center",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-              },
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    const foldersToCheck =
+      folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
+    for (const f of foldersToCheck) {
+      for (const ext of ["md", "mdx"]) {
+        // Try direct raw URL first (fastest, requires no token for public repo)
+        const rawRes = await fetch(
+          `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/content/${f}/${encodeURIComponent(cleanSlug)}.${ext}`,
+          {
+            cache: "no-store",
+            next: { revalidate: 0 },
+            headers,
+          },
+        ).catch(() => null);
+
+        if (rawRes && rawRes.ok) {
+          const fileContents = await rawRes.text();
+          if (fileContents && fileContents.trim().length > 0) {
+            const { data, content } = matter(fileContents);
+            return {
+              slug: cleanSlug,
+              frontmatter: data as T,
+              content,
+            };
+          }
+        }
+
+        // Try GitHub API if raw URL didn't return content
+        const ghRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/content/${f}/${encodeURIComponent(cleanSlug)}.${ext}?ref=${branch}`,
+          {
+            cache: "no-store",
+            next: { revalidate: 0 },
+            headers: {
+              ...headers,
+              Accept: "application/vnd.github.v3.raw",
             },
-          );
-          if (ghRes.ok) {
-            const fileContents = await ghRes.text();
-            if (fileContents && fileContents.trim().length > 0) {
-              const { data, content } = matter(fileContents);
-              return {
-                slug: cleanSlug,
-                frontmatter: data as T,
-                content,
-              };
-            }
+          },
+        ).catch(() => null);
+        if (ghRes && ghRes.ok) {
+          const fileContents = await ghRes.text();
+          if (fileContents && fileContents.trim().length > 0) {
+            const { data, content } = matter(fileContents);
+            return {
+              slug: cleanSlug,
+              frontmatter: data as T,
+              content,
+            };
           }
         }
       }
-    } catch {
-      console.warn(
-        `Could not fetch ${folder}/${cleanSlug} from GitHub API, falling back to local fs`,
-      );
     }
+  } catch {
+    console.warn(
+      `Could not fetch ${folder}/${cleanSlug} from GitHub, falling back to local fs`,
+    );
   }
 
   try {
@@ -199,75 +226,77 @@ export async function getAllMdx<T>(folder: string): Promise<MdxFile<T>[]> {
     // Ignore fs errors, fall back to GitHub API
   }
 
-  // Fallback to GitHub API (works at runtime in Edge Workers)
+  // Fallback to GitHub API (works at runtime in Edge Workers even without GITHUB_TOKEN)
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+    "User-Agent": "National-Urology-Center",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+  };
   if (token) {
-    try {
-      const foldersToCheck =
-        folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
-      for (const f of foldersToCheck) {
-        const ghRes = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/content/${f}?ref=${branch}`,
-          {
-            cache: "no-store",
-            next: { revalidate: 0 },
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github.v3+json",
-              "User-Agent": "National-Urology-Center",
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-            },
-          },
-        );
-        if (ghRes.ok) {
-          const ghFiles = (await ghRes.json().catch(() => [])) as Array<{
-            name?: string;
-            download_url?: string;
-            path?: string;
-          }>;
-          if (Array.isArray(ghFiles)) {
-            const mdFiles = ghFiles.filter(
-              (file) =>
-                file &&
-                file.name &&
-                (file.name.endsWith(".md") || file.name.endsWith(".mdx")) &&
-                file.path,
-            );
-            const items = await Promise.all(
-              mdFiles.map(async (fileObj) => {
-                const rawRes = await fetch(
-                  `https://api.github.com/repos/${owner}/${repo}/contents/${fileObj.path}?ref=${branch}`,
-                  {
-                    cache: "no-store",
-                    next: { revalidate: 0 },
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      Accept: "application/vnd.github.v3.raw",
-                      "User-Agent": "National-Urology-Center",
-                      "Cache-Control": "no-cache, no-store, must-revalidate",
-                    },
-                  },
-                ).catch(() => null);
-                if (!rawRes || !rawRes.ok) return null;
-                const raw = await rawRes.text().catch(() => "");
-                if (!raw) return null;
-                const { data, content } = matter(raw);
-                const slug = (fileObj.name || "").replace(/\.mdx?$/, "");
-                return {
-                  slug,
-                  frontmatter: data as T,
-                  content,
-                };
-              }),
-            );
-            for (const item of items) {
-              if (item) ghItemsMap.set(item.slug, item);
-            }
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    const foldersToCheck =
+      folder === "blog" || folder === "blogs" ? ["blog", "blogs"] : [folder];
+    for (const f of foldersToCheck) {
+      const ghRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/content/${f}?ref=${branch}`,
+        {
+          cache: "no-store",
+          next: { revalidate: 0 },
+          headers,
+        },
+      ).catch(() => null);
+      if (ghRes && ghRes.ok) {
+        const ghFiles = (await ghRes.json().catch(() => [])) as Array<{
+          name?: string;
+          download_url?: string;
+          path?: string;
+        }>;
+        if (Array.isArray(ghFiles)) {
+          const mdFiles = ghFiles.filter(
+            (file) =>
+              file &&
+              file.name &&
+              (file.name.endsWith(".md") || file.name.endsWith(".mdx")) &&
+              file.path,
+          );
+          const items = await Promise.all(
+            mdFiles.map(async (fileObj) => {
+              const rawRes = await fetch(
+                `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${fileObj.path}`,
+                {
+                  cache: "no-store",
+                  next: { revalidate: 0 },
+                  headers: token
+                    ? {
+                        Authorization: `Bearer ${token}`,
+                        "User-Agent": "National-Urology-Center",
+                      }
+                    : { "User-Agent": "National-Urology-Center" },
+                },
+              ).catch(() => null);
+              if (!rawRes || !rawRes.ok) return null;
+              const raw = await rawRes.text().catch(() => "");
+              if (!raw) return null;
+              const { data, content } = matter(raw);
+              const slug = (fileObj.name || "").replace(/\.mdx?$/, "");
+              return {
+                slug,
+                frontmatter: data as T,
+                content,
+              };
+            }),
+          );
+          for (const item of items) {
+            if (item) ghItemsMap.set(item.slug, item);
           }
         }
       }
-    } catch {
-      console.warn(`Could not fetch all ${folder} from GitHub API`);
     }
+  } catch {
+    console.warn(`Could not fetch all ${folder} from GitHub API`);
   }
 
   const files = getMdxFiles(folder);
