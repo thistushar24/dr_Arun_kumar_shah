@@ -11,6 +11,7 @@ export const dynamicParams = false;
 
 interface TreatmentFrontmatter {
   title: string;
+  description?: string;
   summary?: string;
   image?: string;
   seoTitle?: string;

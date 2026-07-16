@@ -16,6 +16,7 @@ export const dynamicParams = false;
 interface BlogFrontmatter {
   title: string;
   date: string;
+  author?: string;
   category: string;
   image?: string;
   seoTitle?: string;
